@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Button, Card, Input, Select } from '../../components/ui'
-import { getCourses, getLearningPaths, LEVEL_OPTIONS } from './api'
+import { CATEGORY_OPTIONS, getCourses, getLearningPaths, LEVEL_OPTIONS } from './api'
 import CourseCard from './CourseCard'
 
-const FILTER_KEYS = ['search', 'level', 'price', 'path', 'sort', 'page']
+const FILTER_KEYS = ['search', 'category', 'level', 'price', 'path', 'sort', 'page']
 
 // Danh mục khóa học; bộ lọc nằm trên URL để chia sẻ được link
 export default function CatalogPage() {
@@ -44,6 +44,14 @@ export default function CatalogPage() {
       <div>
         <h1 className="text-3xl font-extrabold">Khóa học</h1>
         <p className="text-muted">Lập trình và công nghệ thông tin, từ cơ bản đến nâng cao.</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {Object.entries({ '': 'Tất cả', ...CATEGORY_OPTIONS }).map(([value, text]) => (
+          <Button key={value} size="sm" variant={filters.category === value ? 'primary' : 'outline'} onClick={() => setFilter('category', value)}>
+            {text}
+          </Button>
+        ))}
       </div>
 
       <Card className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">

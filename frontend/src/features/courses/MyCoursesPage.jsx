@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, ProgressBar } from '../../components/ui'
-import { getEnrolledCourses } from './api'
+import { getEnrolledCourses, lessonPath } from './api'
 import CourseCard from './CourseCard'
 
 export default function MyCoursesPage() {
@@ -19,9 +19,9 @@ export default function MyCoursesPage() {
       )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => {
-          const { completed, total, next_lesson_id: nextLesson } = course.progress
+          const { completed, total, next_lesson: nextLesson } = course.progress
           return (
-            <CourseCard key={course.id} course={course} to={`/learn/${nextLesson}`}>
+            <CourseCard key={course.id} course={course} to={nextLesson ? lessonPath(course.slug, nextLesson.slug) : `/courses/${course.slug}`}>
               <ProgressBar value={completed} max={total} />
               {completed === total && <Badge color="success">Đã hoàn thành</Badge>}
             </CourseCard>

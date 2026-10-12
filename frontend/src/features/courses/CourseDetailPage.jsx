@@ -2,9 +2,9 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Alert, Avatar, Badge, Button, Card, ProgressBar } from '../../components/ui'
 import { fieldError } from '../../lib/api'
-import { formatPrice } from '../../lib/format'
+import { formatDuration, formatPrice } from '../../lib/format'
 import { useUser } from '../auth/api'
-import { enrollCourse, getCourseDetail, LEVEL_OPTIONS } from './api'
+import { CATEGORY_OPTIONS, enrollCourse, getCourseDetail, lessonPath, LEVEL_OPTIONS } from './api'
 import { Thumbnail } from './CourseCard'
 
 export default function CourseDetailPage() {
@@ -26,6 +26,7 @@ export default function CourseDetailPage() {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
+            <Badge color="accent">{CATEGORY_OPTIONS[course.category]}</Badge>
             <Badge>{LEVEL_OPTIONS[course.level]}</Badge>
             <Badge color={course.price ? 'accent' : 'success'}>{formatPrice(course.price)}</Badge>
           </div>
@@ -35,7 +36,9 @@ export default function CourseDetailPage() {
             <Avatar user={course.instructor} />
             <div>
               <p className="font-semibold">{course.instructor.name}</p>
-              <p className="text-sm text-muted">{course.lessons_count} bài học · {course.enrollments_count} học viên</p>
+              <p className="text-sm text-muted">
+                {course.lessons_count} bài học · {formatDuration(course.lessons_sum_duration_minutes)} · {course.enrollments_count} học viên
+              </p>
             </div>
           </div>
         </div>
@@ -66,7 +69,8 @@ export default function CourseDetailPage() {
                 return (
                   <li key={lesson.id} className="flex items-center gap-3 px-4 py-2.5">
                     <span className={lesson.completed ? 'text-success' : 'text-muted'}>{lesson.completed ? '✓' : open ? '▶' : '🔒'}</span>
-                    {open ? <Link to={`/learn/${lesson.id}`} className="flex-1 hover:text-primary-600">{lesson.title}</Link> : <span className="flex-1 text-muted">{lesson.title}</span>}
+                    {open ? <Link to={lessonPath(course.slug, lesson.slug)} className="flex-1 hover:text-primary-600">{lesson.title}</Link> : <span className="flex-1 text-muted">{lesson.title}</span>}
+                    <span className="text-xs text-muted">{formatDuration(lesson.duration_minutes)}</span>
                     {lesson.is_preview && !course.enrolled && <Badge color="success">Học thử</Badge>}
                   </li>
                 )
@@ -90,22 +94,22 @@ function EnrollBox({ course, firstPreview }) {
     onSuccess: ({ progress }) => {
       queryClient.invalidateQueries({ queryKey: ['course-detail'] })
       queryClient.invalidateQueries({ queryKey: ['my-courses'] })
-      navigate(`/learn/${progress.next_lesson_id}`)
+      if (progress.next_lesson) navigate(lessonPath(course.slug, progress.next_lesson.slug))
     },
   })
 
-  if (course.enrolled) {
-    const { completed, total, next_lesson_id: nextLesson } = course.progress
+  if (course.enrolled && course.progress.next_lesson) {
+    const { completed, total, next_lesson: nextLesson } = course.progress
     return (
       <>
         <ProgressBar label="Tiến độ" value={completed} max={total} />
-        <Link to={`/learn/${nextLesson}`}><Button className="w-full">{completed === 0 ? 'Bắt đầu học' : completed === total ? 'Ôn lại' : 'Học tiếp'}</Button></Link>
+        <Link to={lessonPath(course.slug, nextLesson.slug)}><Button className="w-full">{completed === 0 ? 'Bắt đầu học' : completed === total ? 'Ôn lại' : 'Học tiếp'}</Button></Link>
       </>
     )
   }
 
   const previewButton = firstPreview && (
-    <Link to={`/learn/${firstPreview.id}`}><Button variant="outline" className="w-full">Học thử miễn phí</Button></Link>
+    <Link to={lessonPath(course.slug, firstPreview.slug)}><Button variant="outline" className="w-full">Học thử miễn phí</Button></Link>
   )
 
   if (course.price > 0) {

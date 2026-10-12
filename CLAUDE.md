@@ -56,7 +56,7 @@ eduquest/
 │       ├── App.jsx            router + layout
 │       ├── lib/api.js         gọi API dùng chung
 │       ├── components/        component dùng ở nhiều tính năng
-│       └── features/          auth, courses, lesson, notes, gamification, pet, payment, admin
+│       └── features/          auth, courses, lesson, gamification, pet, payment, admin
 ├── content/                   bài học Markdown để import
 └── CLAUDE.md
 ```
@@ -70,7 +70,7 @@ eduquest/
 - Loại khối: văn bản Markdown, video, quiz (có giải thích), animation tương tác (component React bằng SVG + CSS, có tham số), code sandbox (JavaScript trong iframe cách ly, SQL bằng sql.js), flashcard tổng kết.
 - Bài lưu trong bảng `lesson_blocks`: loại khối + nội dung JSON + thứ tự.
 - Nhập nội dung 2 cách: giao diện kéo-thả khối cho giảng viên, và `php artisan content:import content/<khoa-hoc>` từ file Markdown. Định dạng file Markdown sẽ chốt khi làm tính năng import.
-- Ghi chú bài học gắn với khối hoặc mốc thời gian video; flashcard ôn tập lặp lại ngắt quãng (SM-2).
+- Flashcard ôn tập lặp lại ngắt quãng (SM-2). Không làm tính năng ghi chú bài học (đã bỏ).
 
 ## Trò chơi hóa
 
@@ -92,7 +92,7 @@ eduquest/
 | 11–18/10 | Tạo repo, cấu hình XAMPP, design system; làm thử 1 thú cưng có hoạt ảnh |
 | Đợt 1: 19–25/10 | Use Case, quy tắc thưởng, ERD, kiến trúc; báo cáo chương 1 |
 | 26/10–8/11 | Migration, dữ liệu mẫu, tài khoản, phân quyền, quản lý khóa học/bài, trình soạn khối |
-| Đợt 2: 9–15/11 | Tìm kiếm, lọc, đăng ký khóa; trình học bài đủ khối; tiến độ; ghi chú; demo 1 |
+| Đợt 2: 9–15/11 | Tìm kiếm, lọc, đăng ký khóa; trình học bài đủ khối; tiến độ; demo 1 |
 | 16–29/11 | Sổ cái điểm, XP, cấp độ, chuỗi ngày, nhiệm vụ; 3 loài thú đầu và vòng đời |
 | Đợt 3: 30/11–6/12 | Voucher, MoMo sandbox, bộ sưu tập, trang bị, phòng thú cưng; demo 2 |
 | 7–20/12 | Minigame, ôn tập flashcard, bảng xếp hạng, huy hiệu, quản trị, thống kê, test |

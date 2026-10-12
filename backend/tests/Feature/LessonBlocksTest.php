@@ -60,6 +60,11 @@ class LessonBlocksTest extends TestCase
             ->assertJsonValidationErrors('blocks.0.content.language');
         $this->saveBlocks($lesson, [['type' => 'video', 'content' => ['url' => 'khong-phai-link']]])
             ->assertJsonValidationErrors('blocks.0.content.url');
+        $this->saveBlocks($lesson, [['type' => 'section', 'content' => ['title' => '']]])
+            ->assertJsonValidationErrors('blocks.0.content.title');
+        $this->saveBlocks($lesson, [['type' => 'quiz', 'content' => ['variant' => 'la', 'questions' => $this->quiz(0)['content']['questions']]]])
+            ->assertJsonValidationErrors('blocks.0.content.variant');
+        $this->saveBlocks($lesson, [['type' => 'section', 'content' => ['title' => 'Phần mở đầu']]])->assertOk();
     }
 
     public function test_id_khoi_cua_bai_khac_thi_tao_khoi_moi(): void

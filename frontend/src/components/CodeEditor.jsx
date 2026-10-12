@@ -5,9 +5,11 @@ import { javascript } from '@codemirror/lang-javascript'
 import { sql } from '@codemirror/lang-sql'
 
 const theme = EditorView.theme({
-  '&': { fontSize: '14px', backgroundColor: '#fff' },
+  '&': { fontSize: '14px', backgroundColor: 'var(--color-card)', color: 'var(--color-ink)' },
   '.cm-scroller': { fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace', minHeight: 'var(--editor-min-height)' },
-  '.cm-gutters': { backgroundColor: '#f7f7fc', borderRight: '1px solid #e0e3ff' },
+  '.cm-gutters': { backgroundColor: 'var(--color-surface)', color: 'var(--color-muted)', borderRight: '1px solid var(--color-primary-100)' },
+  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, var(--color-primary-100) 50%, transparent)' },
+  '.cm-cursor': { borderLeftColor: 'var(--color-ink)' },
   '&.cm-focused': { outline: 'none' },
 })
 

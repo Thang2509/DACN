@@ -2,14 +2,14 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Card, ProgressBar } from '../../components/ui'
 import { useUser } from '../auth/api'
-import { getEnrolledCourses, getLearningPaths } from './api'
+import { getEnrolledCourses, getLearningPaths, lessonPath } from './api'
 import CourseCard from './CourseCard'
 
 export default function HomePage() {
   const { user } = useUser()
   const { data: paths = [] } = useQuery({ queryKey: ['learning-paths'], queryFn: getLearningPaths })
   const { data: myCourses = [] } = useQuery({ queryKey: ['my-courses'], queryFn: getEnrolledCourses, enabled: !!user })
-  const learning = myCourses.filter((course) => course.progress.completed < course.progress.total).slice(0, 3)
+  const learning = myCourses.filter((course) => course.progress.next_lesson && course.progress.completed < course.progress.total).slice(0, 3)
 
   return (
     <div className="space-y-12">
@@ -20,7 +20,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-extrabold">Tiếp tục học</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {learning.map((course) => (
-              <CourseCard key={course.id} course={course} to={`/learn/${course.progress.next_lesson_id}`}>
+              <CourseCard key={course.id} course={course} to={lessonPath(course.slug, course.progress.next_lesson.slug)}>
                 <ProgressBar value={course.progress.completed} max={course.progress.total} />
               </CourseCard>
             ))}
@@ -49,13 +49,13 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="grid items-center gap-8 rounded-3xl bg-gradient-to-br from-primary-600 to-primary-800 p-8 text-white md:grid-cols-[1.3fr_1fr] md:p-12">
+    <section className="grid items-center gap-8 rounded-3xl bg-gradient-to-br from-[#5b43e6] to-[#2b2170] p-8 text-white md:grid-cols-[1.3fr_1fr] md:p-12">
       <div className="space-y-5">
         <h1 className="text-4xl font-extrabold leading-tight md:text-5xl">
           Học lập trình mỗi ngày,<br />
           <span className="text-accent-300">nuôi thú cưng lớn lên cùng bạn</span>
         </h1>
-        <p className="text-lg text-primary-100">
+        <p className="text-lg text-white/80">
           Bài học ngắn theo từng khối, code chạy ngay trên trình duyệt, nhận XP và xu để đổi voucher.
         </p>
         <div className="flex flex-wrap gap-3">

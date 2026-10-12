@@ -19,6 +19,7 @@ class CatalogController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'level' => ['nullable', Rule::in(Course::LEVELS)],
+            'category' => ['nullable', Rule::in(Course::CATEGORIES)],
             'price' => ['nullable', Rule::in(['free', 'paid'])],
             'path' => ['nullable', 'string', 'max:200'],
             'sort' => ['nullable', Rule::in(['newest', 'popular'])],
@@ -27,6 +28,7 @@ class CatalogController extends Controller
         return Course::published()
             ->with('instructor:id,name')
             ->withCount(['lessons', 'enrollments'])
+            ->withSum('lessons', 'duration_minutes')
             ->filter($filters)
             ->paginate(12);
     }
@@ -37,7 +39,9 @@ class CatalogController extends Controller
         $canManage = $user && Gate::forUser($user)->allows('manage-course', $course);
         abort_unless($course->status === Course::STATUS_PUBLISHED || $canManage, 404);
 
-        $course->load('instructor:id,name,bio,avatar_path')->loadCount(['lessons', 'enrollments']);
+        $course->load('instructor:id,name,bio,avatar_path')
+            ->loadCount(['lessons', 'enrollments'])
+            ->loadSum('lessons', 'duration_minutes');
         $enrolled = $user && $this->learning->isEnrolled($user, $course);
 
         return [
@@ -52,7 +56,8 @@ class CatalogController extends Controller
     {
         return LearningPath::with(['courses' => fn ($query) => $query->published()
             ->with('instructor:id,name')
-            ->withCount('lessons'),
+            ->withCount('lessons')
+            ->withSum('lessons', 'duration_minutes'),
         ])->get();
     }
 }

@@ -1,9 +1,9 @@
 // Các component giao diện cơ bản của design system
 
 const BUTTON_VARIANTS = {
-  primary: 'bg-primary-600 text-white border-b-4 border-primary-800 hover:bg-primary-500',
-  accent: 'bg-accent-500 text-white border-b-4 border-accent-700 hover:bg-accent-400',
-  outline: 'bg-white text-primary-700 border-2 border-b-4 border-primary-200 hover:bg-primary-50',
+  primary: 'bg-primary-600 text-white border-b-4 border-black/25 hover:bg-primary-500',
+  accent: 'bg-accent-500 text-white border-b-4 border-black/20 hover:bg-accent-400',
+  outline: 'bg-card text-primary-700 border-2 border-b-4 border-primary-200 hover:bg-primary-50',
   ghost: 'text-primary-700 hover:bg-primary-50',
 }
 
@@ -25,7 +25,7 @@ export function Button({ variant = 'primary', size = 'md', className = '', ...pr
 }
 
 export function Card({ className = '', ...props }) {
-  return <div className={`rounded-2xl bg-white p-6 shadow-card ${className}`} {...props} />
+  return <div className={`rounded-2xl bg-card p-6 shadow-card ${className}`} {...props} />
 }
 
 const BADGE_COLORS = {
@@ -71,7 +71,7 @@ export function ProgressBar({ value, max = 100, color = 'primary', label }) {
   )
 }
 
-const FIELD_CLASS = 'w-full rounded-xl border-2 bg-white px-4 py-2.5 outline-none transition focus:border-primary-500'
+const FIELD_CLASS = 'w-full rounded-xl border-2 bg-card px-4 py-2.5 outline-none transition focus:border-primary-500'
 
 // Khung chung cho ô nhập: nhãn ở trên, lỗi ở dưới; w-full để ô giãn hết chỗ trống khi nằm trong hàng flex
 function Field({ label, error, children }) {

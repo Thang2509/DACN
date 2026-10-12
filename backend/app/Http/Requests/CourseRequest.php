@@ -16,6 +16,8 @@ class CourseRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:10000'],
             'level' => ['required', Rule::in(Course::LEVELS)],
             'price' => ['required', 'integer', 'min:0', 'max:10000000'],
+            'category' => ['sometimes', Rule::in(Course::CATEGORIES)],
+            'playground_sql' => ['nullable', 'string', 'max:20000'], // SQL tạo bảng mẫu cho SQL Playground
         ];
     }
 }

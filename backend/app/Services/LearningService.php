@@ -50,7 +50,9 @@ class LearningService
     // Mục lục chương/bài kèm cờ "đã học" của người dùng
     public function outline(Course $course, ?User $user): array
     {
-        $chapters = $course->chapters()->with('lessons:id,chapter_id,title,position,is_preview')->get(['id', 'course_id', 'title']);
+        $chapters = $course->chapters()
+            ->with('lessons:id,chapter_id,title,slug,summary,duration_minutes,position,is_preview')
+            ->get(['id', 'course_id', 'title']);
         $lessonIds = $chapters->pluck('lessons')->flatten()->pluck('id');
         $done = $user
             ? LessonProgress::where('user_id', $user->id)->whereIn('lesson_id', $lessonIds)->pluck('lesson_id')->all()
@@ -60,9 +62,7 @@ class LearningService
             'id' => $chapter->id,
             'title' => $chapter->title,
             'lessons' => $chapter->lessons->map(fn ($lesson) => [
-                'id' => $lesson->id,
-                'title' => $lesson->title,
-                'is_preview' => $lesson->is_preview,
+                ...$lesson->only('id', 'title', 'slug', 'summary', 'duration_minutes', 'is_preview'),
                 'completed' => in_array($lesson->id, $done),
             ])->all(),
         ])->all();
@@ -77,7 +77,7 @@ class LearningService
         return [
             'completed' => $lessons->where('completed', true)->count(),
             'total' => $lessons->count(),
-            'next_lesson_id' => $next['id'] ?? null,
+            'next_lesson' => $next ? collect($next)->only('id', 'slug', 'title')->all() : null,
         ];
     }
 
@@ -86,6 +86,7 @@ class LearningService
         return $user->enrolledCourses()
             ->with('instructor:id,name')
             ->withCount('lessons')
+            ->withSum('lessons', 'duration_minutes')
             ->orderByPivot('updated_at', 'desc')
             ->get()
             ->map(fn (Course $course) => [...$course->toArray(), 'progress' => $this->progress($user, $course)]);
@@ -101,8 +102,8 @@ class LearningService
         $index = collect($lessons)->search(fn ($item) => $item['id'] === $lesson->id);
 
         return [
-            'lesson' => $lesson->only('id', 'title', 'is_preview'),
-            'course' => [...$course->only('id', 'slug', 'title', 'price'), 'chapters' => $outline],
+            'lesson' => $lesson->only('id', 'slug', 'title', 'summary', 'intro_video_url', 'duration_minutes', 'is_preview'),
+            'course' => [...$course->only('id', 'slug', 'title', 'price', 'playground_sql'), 'chapters' => $outline],
             'blocks' => $blocks->map(fn (LessonBlock $block) => [
                 'id' => $block->id,
                 'type' => $block->type,
@@ -112,28 +113,47 @@ class LearningService
             'can_manage' => $user !== null && Gate::forUser($user)->allows('manage-course', $course), // người soạn xem được mọi bài
             'completed' => $lessons[$index]['completed'] ?? false,
             'quiz_attempts' => $user ? $this->latestAttempts($user, $blocks) : (object) [],
-            'prev_lesson_id' => $lessons[$index - 1]['id'] ?? null,
-            'next_lesson_id' => $lessons[$index + 1]['id'] ?? null,
+            'prev_lesson' => $lessons[$index - 1] ?? null,
+            'next_lesson' => $lessons[$index + 1] ?? null,
         ];
     }
 
-    public function gradeQuiz(User $user, LessonBlock $block, array $answers): array
+    /**
+     * Chấm một câu của khối quiz và ghi vào lượt làm đang dở (chưa có thì tạo mới).
+     * Lượt làm xong khi đã trả lời hết các câu; làm lại sẽ tạo lượt mới.
+     */
+    public function answerQuestion(User $user, LessonBlock $block, int $question, int $answer): array
     {
-        $answers = array_map('intval', $answers);
-        $results = $this->quizResults($block, $answers);
-        $correctCount = collect($results)->where('correct', true)->count();
+        $count = count($block->content['questions']);
+        if ($question >= $count) {
+            $this->fail('question', 'Câu hỏi không tồn tại.');
+        }
 
-        QuizAttempt::create([
-            'user_id' => $user->id,
-            'lesson_block_id' => $block->id,
-            'answers' => $answers,
-            'correct_count' => $correctCount,
-        ]);
+        $attempt = QuizAttempt::where('user_id', $user->id)
+            ->where('lesson_block_id', $block->id)
+            ->whereNull('completed_at')
+            ->latest('id')
+            ->first()
+            ?? new QuizAttempt(['user_id' => $user->id, 'lesson_block_id' => $block->id, 'answers' => []]);
 
-        return ['answers' => $answers, 'results' => $results, 'correct_count' => $correctCount];
+        // Khớp số câu hiện tại của khối (giảng viên có thể đã sửa quiz)
+        $answers = array_pad(array_slice($attempt->answers, 0, $count), $count, null);
+        if ($answers[$question] !== null) {
+            $this->fail('question', 'Câu này đã được trả lời, hãy bấm Làm lại để làm lượt mới.');
+        }
+        $answers[$question] = $answer;
+
+        $attempt->answers = $answers;
+        $attempt->correct_count = collect($this->quizResults($block, $answers))->where('correct', true)->count();
+        if (! in_array(null, $answers, true)) {
+            $attempt->completed_at = now();
+        }
+        $attempt->save();
+
+        return $this->attemptView($block, $attempt, $this->finishedBlockIds($user, [$block->id])->isNotEmpty());
     }
 
-    // Hoàn thành bài khi đã đăng ký khóa và đã trả lời mọi khối quiz (sai vẫn được tính)
+    // Hoàn thành bài khi đã đăng ký khóa và đã làm xong mọi khối quiz (sai vẫn được tính)
     public function completeLesson(User $user, Lesson $lesson): array
     {
         $course = $lesson->chapter->course;
@@ -142,11 +162,7 @@ class LearningService
         }
 
         $quizIds = $lesson->blocks()->where('type', 'quiz')->pluck('id');
-        $answered = QuizAttempt::where('user_id', $user->id)
-            ->whereIn('lesson_block_id', $quizIds)
-            ->distinct()
-            ->count('lesson_block_id');
-        if ($answered < $quizIds->count()) {
+        if ($this->finishedBlockIds($user, $quizIds)->count() < $quizIds->count()) {
             $this->fail('lesson', 'Hãy trả lời hết các câu quiz trước khi hoàn thành bài.');
         }
 
@@ -170,7 +186,7 @@ class LearningService
         return collect($outline)->pluck('lessons')->flatten(1);
     }
 
-    // Ẩn đáp án và giải thích của quiz cho tới khi học viên nộp bài
+    // Ẩn đáp án và giải thích của quiz; chỉ lộ ra từng câu sau khi học viên trả lời câu đó
     private function publicContent(LessonBlock $block): array
     {
         if ($block->type !== 'quiz') {
@@ -178,36 +194,66 @@ class LearningService
         }
 
         return [
+            'variant' => $block->content['variant'] ?? 'quick',
             'questions' => collect($block->content['questions'])
                 ->map(fn ($q) => ['question' => $q['question'], 'options' => $q['options']])
                 ->all(),
         ];
     }
 
+    // Kết quả từng câu; câu chưa trả lời là null
     private function quizResults(LessonBlock $block, array $answers): array
     {
-        return collect($block->content['questions'])->map(fn ($q, $i) => [
-            'correct' => ($answers[$i] ?? null) === $q['answer'],
-            'answer' => $q['answer'],
-            'explanation' => $q['explanation'] ?? null,
-        ])->all();
+        return collect($block->content['questions'])->map(function ($q, $i) use ($answers) {
+            if (($answers[$i] ?? null) === null) {
+                return null;
+            }
+
+            return [
+                'correct' => $answers[$i] === $q['answer'],
+                'answer' => $q['answer'],
+                'explanation' => $q['explanation'] ?? null,
+            ];
+        })->all();
     }
 
-    // Lượt làm gần nhất của từng khối quiz trong bài, dạng { blockId: {...} }
+    // completed_once: khối này đã từng có lượt làm xong (đủ điều kiện hoàn thành bài kể cả khi đang làm lại)
+    private function attemptView(LessonBlock $block, QuizAttempt $attempt, bool $completedOnce): array
+    {
+        return [
+            'answers' => $attempt->answers,
+            'results' => $this->quizResults($block, $attempt->answers),
+            'correct_count' => $attempt->correct_count,
+            'completed' => $attempt->completed_at !== null,
+            'completed_once' => $completedOnce,
+        ];
+    }
+
+    private function finishedBlockIds(User $user, $blockIds): Collection
+    {
+        return QuizAttempt::where('user_id', $user->id)
+            ->whereIn('lesson_block_id', $blockIds)
+            ->whereNotNull('completed_at')
+            ->distinct()
+            ->pluck('lesson_block_id');
+    }
+
+    // Lượt làm gần nhất (xong hoặc đang dở) của từng khối quiz, dạng { blockId: {...} }
     private function latestAttempts(User $user, Collection $blocks): object
     {
         $quizBlocks = $blocks->where('type', 'quiz')->keyBy('id');
+        $finished = $this->finishedBlockIds($user, $quizBlocks->keys())->all();
 
         return (object) QuizAttempt::where('user_id', $user->id)
             ->whereIn('lesson_block_id', $quizBlocks->keys())
             ->orderBy('id')
             ->get()
             ->keyBy('lesson_block_id')
-            ->map(fn (QuizAttempt $attempt) => [
-                'answers' => $attempt->answers,
-                'results' => $this->quizResults($quizBlocks[$attempt->lesson_block_id], $attempt->answers),
-                'correct_count' => $attempt->correct_count,
-            ])
+            ->map(fn (QuizAttempt $attempt) => $this->attemptView(
+                $quizBlocks[$attempt->lesson_block_id],
+                $attempt,
+                in_array($attempt->lesson_block_id, $finished),
+            ))
             ->all();
     }
 

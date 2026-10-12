@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Badge, Card } from '../../components/ui'
-import { formatPrice } from '../../lib/format'
+import { formatDuration, formatPrice } from '../../lib/format'
 import { LEVEL_OPTIONS } from './api'
 
 // Thẻ khóa học dùng ở trang chủ, danh mục, khóa của tôi, khu giảng viên; children hiện ở cuối thẻ
@@ -17,7 +17,11 @@ export default function CourseCard({ course, to = `/courses/${course.slug}`, chi
           <h3 className="text-lg font-bold">{course.title}</h3>
           {course.summary && <p className="line-clamp-2 text-sm text-muted">{course.summary}</p>}
           <p className="mt-auto pt-1 text-xs text-muted">
-            {[course.instructor?.name, course.lessons_count != null && `${course.lessons_count} bài`].filter(Boolean).join(' · ')}
+            {[
+              course.instructor?.name,
+              course.lessons_count != null && `${course.lessons_count} bài`,
+              formatDuration(course.lessons_sum_duration_minutes),
+            ].filter(Boolean).join(' · ')}
           </p>
           {children}
         </div>

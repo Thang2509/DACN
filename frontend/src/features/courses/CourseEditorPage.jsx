@@ -1,12 +1,14 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import CodeEditor from '../../components/CodeEditor'
 import CourseStatusBadge from '../../components/CourseStatusBadge'
 import { Alert, Button, Card, Input, Select, Textarea } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { useForm } from '../../lib/useForm'
-import { courseKey, deleteCourse, getCourse, LEVEL_OPTIONS, submitCourse, updateCourse, uploadThumbnail } from './api'
+import { CATEGORY_OPTIONS, courseKey, deleteCourse, getCourse, LEVEL_OPTIONS, submitCourse, updateCourse, uploadThumbnail } from './api'
 import CourseOutline from './CourseOutline'
 import { Thumbnail } from './CourseCard'
+import { SetupPreview } from '../lesson/TableViewer'
 
 export default function CourseEditorPage() {
   const { courseId } = useParams()
@@ -68,12 +70,14 @@ function CourseHeader({ course }) {
 function CourseInfoForm({ course }) {
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: courseKey(course.id) })
-  const { values, bind } = useForm({
+  const { values, setValues, bind } = useForm({
     title: course.title,
     summary: course.summary ?? '',
     description: course.description ?? '',
     level: course.level,
+    category: course.category,
     price: course.price,
+    playground_sql: course.playground_sql ?? '',
   })
 
   const save = useMutation({ mutationFn: (data) => updateCourse(course.id, data), onSuccess: refresh })
@@ -100,10 +104,17 @@ function CourseInfoForm({ course }) {
         <Input label="Tên khóa học" {...bind('title')} error={error('title')} />
         <Input label="Mô tả ngắn" {...bind('summary')} error={error('summary')} />
         <Textarea label="Giới thiệu chi tiết" rows={6} {...bind('description')} error={error('description')} />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
+          <Select label="Chủ đề" options={CATEGORY_OPTIONS} {...bind('category')} />
           <Select label="Cấp độ" options={LEVEL_OPTIONS} {...bind('level')} />
-          <Input label="Giá (VND, 0 = miễn phí)" type="number" min="0" step="1000" {...bind('price')} error={error('price')} />
+          <Input label="Giá (VND)" type="number" min="0" step="1000" {...bind('price')} error={error('price')} />
         </div>
+        <div>
+          <span className="mb-1 block text-sm font-semibold">SQL Playground: SQL tạo bảng mẫu (để trống nếu khóa không cần)</span>
+          <CodeEditor value={values.playground_sql} onChange={(text) => setValues((v) => ({ ...v, playground_sql: text }))} language="sql" minHeight="5rem" />
+          {error('playground_sql') && <p className="mt-1 text-sm text-danger">{error('playground_sql')}</p>}
+        </div>
+        <SetupPreview sql={values.playground_sql} />
         <Button disabled={save.isPending}>Lưu thông tin</Button>
       </form>
     </Card>

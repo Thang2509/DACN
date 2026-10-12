@@ -36,6 +36,8 @@
   --color-ink: #1c1838;
   --color-muted: #6b6889;
   --color-surface: #f7f7fc;
+  --color-card: #ffffff;
+  --color-code: #1c1838; /* nền khối code, tối ở cả hai chế độ */
 
   --shadow-card: 0 1px 2px rgb(28 24 56 / 0.06), 0 8px 24px -12px rgb(28 24 56 / 0.18);
 
@@ -44,6 +46,51 @@
     from { transform: translateY(-40px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+}
+
+/* Chế độ tối: đổi giá trị token, các trang dùng token sẽ tự đổi theo.
+   Thang màu đảo đầu: 50–300 thành nền tối, 700–900 thành chữ sáng; 400–600 giữ màu thương hiệu */
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-surface: #100e22;
+  --color-card: #1b1836;
+  --color-ink: #ecebff;
+  --color-muted: #a5a2c8;
+  --color-code: #0c0a1c;
+  --color-success: #4ade80;
+  --color-danger: #fb7185;
+
+  --color-primary-50: #1f1a45;
+  --color-primary-100: #272057;
+  --color-primary-200: #352c78;
+  --color-primary-300: #4b40a6;
+  --color-primary-600: #6f5cf2;
+  --color-primary-700: #b4b2ff;
+  --color-primary-800: #cfd0ff;
+  --color-primary-900: #e6e7ff;
+
+  --color-accent-50: #2a1a12;
+  --color-accent-100: #3b2214;
+  --color-accent-200: #5a3216;
+  --color-accent-700: #ffb070;
+  --color-accent-800: #ffd1a8;
+  --color-accent-900: #ffead4;
+
+  --color-green-50: #0f2a1b;
+  --color-green-100: #133821;
+  --color-green-200: #1d5232;
+  --color-green-800: #bbf7d0;
+  --color-rose-50: #2d1019;
+  --color-rose-100: #3d1422;
+  --color-rose-200: #5c1d31;
+  --color-rose-800: #fecdd3;
+  --color-amber-50: #2b210b;
+  --color-amber-100: #3a2c0d;
+  --color-amber-200: #5a4312;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
 }
 
 body {
@@ -61,7 +108,7 @@ body {
   & a { @apply text-primary-600 underline; }
   & blockquote { @apply border-l-4 border-primary-200 pl-4 text-muted; }
   & :not(pre) > code { @apply rounded bg-primary-50 px-1.5 py-0.5 text-sm text-primary-800; }
-  & pre { @apply overflow-x-auto rounded-xl bg-ink p-4 text-sm text-white; }
+  & pre { @apply overflow-x-auto rounded-xl bg-code p-4 text-sm text-white; }
   & table { @apply w-full border-collapse text-sm; }
   & th, & td { @apply border border-primary-100 px-3 py-2 text-left; }
   & th { @apply bg-primary-50; }

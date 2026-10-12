@@ -1,25 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Button, Card } from '../../components/ui'
+import Drawer from '../../components/Drawer'
+import { Alert, Button, Card, Input, ProgressBar } from '../../components/ui'
 import { fieldError } from '../../lib/api'
+import { formatDuration } from '../../lib/format'
 import { useUser } from '../auth/api'
-import { enrollCourse } from '../courses/api'
-import NotesPanel from '../notes/NotesPanel'
+import { enrollCourse, lessonPath } from '../courses/api'
 import { completeLesson, getLesson } from './api'
-import BlockView from './Blocks'
+import BlockView, { VideoBlock } from './Blocks'
+import { sectionNumbers } from './blockTypes'
+import SqlPlayground from './SqlPlayground'
 
 export default function LessonPlayerPage() {
-  const { lessonId } = useParams()
+  const { slug, lessonSlug } = useParams()
   const { data, isLoading, error } = useQuery({
-    queryKey: ['lesson', lessonId],
-    queryFn: () => getLesson(lessonId),
+    queryKey: ['lesson', slug, lessonSlug],
+    queryFn: () => getLesson(slug, lessonSlug),
     retry: false,
   })
 
   if (isLoading) return <p className="text-muted">Đang tải…</p>
   if (error) return <LockedLesson error={error} />
-  return <Player key={lessonId} data={data} lessonId={lessonId} />
+  return <Player key={`${slug}/${lessonSlug}`} data={data} queryKey={['lesson', slug, lessonSlug]} />
 }
 
 // Chưa đăng nhập (401) hoặc chưa đăng ký khóa (403)
@@ -28,7 +31,7 @@ function LockedLesson({ error }) {
   const course = error.data?.course
   return (
     <Card className="mx-auto max-w-lg space-y-4 text-center">
-      <p className="text-lg font-bold">{error.message}</p>
+      <p className="text-lg font-bold">{error.status === 404 ? 'Không tìm thấy bài học.' : error.message}</p>
       {error.status === 401 && (
         <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`}><Button>Đăng nhập</Button></Link>
       )}
@@ -37,138 +40,273 @@ function LockedLesson({ error }) {
   )
 }
 
-function Player({ data, lessonId }) {
+function Player({ data, queryKey }) {
   const { user } = useUser()
   const queryClient = useQueryClient()
   const { hash } = useLocation()
-  const [tab, setTab] = useState('outline')
-  const [noteTarget, setNoteTarget] = useState(null)
+  const { course, lesson, blocks } = data
+  const [drawer, setDrawer] = useState(null) // 'sql' | null
 
-  // Trình phát video của từng khối (getTime/seek) để ghi chú gắn mốc thời gian
-  const players = useRef({})
-  const registerPlayer = useCallback((blockId, player) => {
-    if (player) players.current[blockId] = player
-    else delete players.current[blockId]
-  }, [])
+  const numbers = useMemo(() => sectionNumbers(blocks), [blocks])
+  const sections = blocks
+    .map((block, i) => ({ ...block, number: numbers[i] }))
+    .filter((block) => block.type === 'section')
 
   const attempts = data.quiz_attempts ?? {}
-  const remainingQuizzes = data.blocks.filter((block) => block.type === 'quiz' && !attempts[block.id]).length
-
+  const remainingQuizzes = blocks.filter((block) => block.type === 'quiz' && !attempts[block.id]?.completed_once).length
   const onAttempt = (blockId, attempt) =>
-    queryClient.setQueryData(['lesson', lessonId], (old) => ({ ...old, quiz_attempts: { ...old.quiz_attempts, [blockId]: attempt } }))
+    queryClient.setQueryData(queryKey, (old) => ({ ...old, quiz_attempts: { ...old.quiz_attempts, [blockId]: attempt } }))
 
-  const noteForBlock = (block) => {
-    const time = players.current[block.id]?.getTime()
-    setNoteTarget({ blockId: block.id, videoTime: time != null ? Math.floor(time) : null })
-    setTab('notes')
-  }
-  const jumpToNote = (note) => {
-    if (note.lesson_block_id) document.getElementById(`block-${note.lesson_block_id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    if (note.video_time != null) players.current[note.lesson_block_id]?.seek(note.video_time)
-  }
+  const closeDrawer = useCallback(() => setDrawer(null), [])
 
-  // Mở từ trang ghi chú: /learn/12#block-34 → cuộn tới khối
+  // Mở link có #section-... / #block-... thì cuộn tới đúng chỗ
   useEffect(() => {
     if (hash) document.querySelector(hash)?.scrollIntoView({ block: 'start' })
   }, [hash])
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <article className="space-y-5">
-        <div>
-          <Link to={`/courses/${data.course.slug}`} className="text-sm font-semibold text-primary-600">← {data.course.title}</Link>
-          <h1 className="text-3xl font-extrabold">{data.lesson.title}</h1>
-        </div>
+    <>
+      <div className="grid items-start gap-8 lg:grid-cols-[260px_minmax(0,1fr)_36px]">
+        <LessonSidebar course={course} currentId={lesson.id} fullAccess={data.enrolled || data.can_manage} />
 
-        {data.blocks.map((block) => (
-          <Card key={block.id} id={`block-${block.id}`} className="group relative scroll-mt-20">
-            {user && (
+        <article className="min-w-0 space-y-6">
+          <LessonHeader course={course} lesson={lesson} sections={sections}>
+            {lesson.intro_video_url && <VideoBlock content={{ url: lesson.intro_video_url }} />}
+          </LessonHeader>
+
+          {blocks.map((block, i) =>
+            block.type === 'section' ? (
+              <SectionHeading key={block.id} block={block} number={numbers[i]} />
+            ) : (
+              <div key={block.id} id={`block-${block.id}`} className="scroll-mt-20">
+                {/* Văn bản đọc liền mạch; khối tương tác nằm trong thẻ */}
+                {block.type === 'markdown' ? (
+                  <BlockView block={block} />
+                ) : (
+                  <Card>
+                    <BlockView
+                      block={block}
+                      lessonId={lesson.id}
+                      attempt={attempts[block.id]}
+                      canAnswer={!!user}
+                      onAttempt={onAttempt}
+                    />
+                  </Card>
+                )}
+              </div>
+            ),
+          )}
+
+          <CompleteBar data={data} queryKey={queryKey} remainingQuizzes={remainingQuizzes} />
+          {data.next_lesson && <NextLessonCard course={course} next={data.next_lesson} />}
+          {data.prev_lesson && (
+            <Link to={lessonPath(course.slug, data.prev_lesson.slug)} className="block text-sm font-semibold text-primary-600">
+              ← Bài trước: {data.prev_lesson.title}
+            </Link>
+          )}
+        </article>
+
+        <SectionRail sections={sections} hasPlayground={!!course.playground_sql} onOpen={setDrawer} />
+      </div>
+
+      {course.playground_sql && (
+        <Drawer open={drawer === 'sql'} title="SQL Playground" onClose={closeDrawer}>
+          <SqlPlayground setupSql={course.playground_sql} />
+        </Drawer>
+      )}
+    </>
+  )
+}
+
+const scrollToId = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+// Mục lục khóa bên trái: tìm bài, chương thu gọn được, bài khóa có ổ khóa
+function LessonSidebar({ course, currentId, fullAccess }) {
+  const [search, setSearch] = useState('')
+  const [openOnMobile, setOpenOnMobile] = useState(false)
+  const [collapsed, setCollapsed] = useState({}) // { chapterId: true } khi thu gọn
+  const lessons = course.chapters.flatMap((chapter) => chapter.lessons)
+  const completed = lessons.filter((item) => item.completed).length
+  const keyword = search.trim().toLowerCase()
+
+  return (
+    <aside className="space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+      <div className="flex items-center justify-between">
+        <Link to={`/courses/${course.slug}`} className="text-lg font-extrabold hover:text-primary-600">{course.title}</Link>
+        <button type="button" className="text-sm font-semibold text-primary-600 lg:hidden" onClick={() => setOpenOnMobile(!openOnMobile)}>
+          {openOnMobile ? 'Ẩn mục lục' : 'Mục lục'}
+        </button>
+      </div>
+      {fullAccess && <ProgressBar value={completed} max={lessons.length} />}
+
+      <div className={`space-y-3 ${openOnMobile ? '' : 'hidden lg:block'}`}>
+        <Input placeholder="Tìm bài học…" value={search} onChange={(e) => setSearch(e.target.value)} className="py-2" />
+        {course.chapters.map((chapter) => {
+          const visible = chapter.lessons.filter((item) => item.title.toLowerCase().includes(keyword))
+          if (keyword && visible.length === 0) return null
+          const isCollapsed = collapsed[chapter.id] && !keyword
+          return (
+            <div key={chapter.id} className="border-b border-primary-100 pb-2">
               <button
                 type="button"
-                onClick={() => noteForBlock(block)}
-                className="absolute right-3 top-3 rounded-lg px-2 py-1 text-xs font-semibold text-muted opacity-0 transition hover:bg-primary-50 hover:text-primary-600 group-hover:opacity-100 focus:opacity-100"
+                onClick={() => setCollapsed({ ...collapsed, [chapter.id]: !collapsed[chapter.id] })}
+                className="flex w-full items-center justify-between py-2 text-left font-bold"
               >
-                + Ghi chú
+                {chapter.title}
+                <span className="text-xs text-muted">{isCollapsed ? '▸' : '▾'}</span>
               </button>
-            )}
-            <BlockView
-              block={block}
-              lessonId={lessonId}
-              attempt={attempts[block.id]}
-              canAnswer={!!user}
-              onAttempt={onAttempt}
-              registerPlayer={registerPlayer}
-            />
-          </Card>
-        ))}
+              {!isCollapsed && visible.map((item) => {
+                const open = fullAccess || item.is_preview
+                const current = item.id === currentId
+                const className = `flex items-center gap-2 rounded-lg border-l-4 px-3 py-2 text-sm ${
+                  current ? 'border-primary-500 bg-primary-50 font-bold text-primary-700' : 'border-transparent'
+                }`
+                const content = (
+                  <>
+                    <span className="flex-1">{item.title}</span>
+                    <span className={`text-xs ${item.completed ? 'text-success' : 'text-muted'}`}>{item.completed ? '✓' : open ? '' : '🔒'}</span>
+                  </>
+                )
+                return open ? (
+                  <Link key={item.id} to={lessonPath(course.slug, item.slug)} className={`${className} hover:bg-primary-50`}>{content}</Link>
+                ) : (
+                  <span key={item.id} className={`${className} text-muted`}>{content}</span>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </aside>
+  )
+}
 
-        <CompleteBar data={data} lessonId={lessonId} remainingQuizzes={remainingQuizzes} />
-        <div className="flex justify-between">
-          {data.prev_lesson_id ? <Link to={`/learn/${data.prev_lesson_id}`}><Button variant="ghost">← Bài trước</Button></Link> : <span />}
-          {data.next_lesson_id && <Link to={`/learn/${data.next_lesson_id}`}><Button variant="ghost">Bài sau →</Button></Link>}
-        </div>
-      </article>
+// Đầu bài: breadcrumb, tiêu đề, tóm tắt, video mở đầu (children), lộ trình bài học
+function LessonHeader({ course, lesson, sections, children }) {
+  const numbered = sections.filter((section) => section.number)
+  return (
+    <header className="space-y-4">
+      <nav className="flex flex-wrap gap-1 text-sm text-muted">
+        <Link to="/" className="hover:text-primary-600">Trang chủ</Link> ›
+        <Link to="/courses" className="hover:text-primary-600">Khóa học</Link> ›
+        <Link to={`/courses/${course.slug}`} className="hover:text-primary-600">{course.title}</Link>
+      </nav>
+      <h1 className="text-4xl font-extrabold leading-tight">{lesson.title}</h1>
+      {lesson.summary && <p className="text-lg text-muted">{lesson.summary}</p>}
+      <p className="text-sm font-semibold text-muted">
+        ⏱ {formatDuration(lesson.duration_minutes)}{numbered.length > 0 && ` · ${numbered.length} phần`}
+      </p>
+      {children}
 
-      <aside className="space-y-3 lg:sticky lg:top-20">
-        <div className="flex gap-2">
-          <Button size="sm" variant={tab === 'outline' ? 'primary' : 'outline'} onClick={() => setTab('outline')}>Mục lục</Button>
-          <Button size="sm" variant={tab === 'notes' ? 'primary' : 'outline'} onClick={() => setTab('notes')}>Ghi chú</Button>
-        </div>
-        <Card className="max-h-[calc(100vh-10rem)] overflow-y-auto p-4">
-          {tab === 'outline' ? (
-            <Outline course={data.course} currentId={data.lesson.id} fullAccess={data.enrolled || data.can_manage} />
-          ) : (
-            <NotesPanel
-              lessonId={lessonId}
-              blocks={data.blocks}
-              canWrite={!!user}
-              target={noteTarget}
-              onClearTarget={() => setNoteTarget(null)}
-              onJump={jumpToNote}
-            />
-          )}
+      {sections.length > 0 && (
+        <Card className="space-y-2 p-5">
+          <p className="font-bold">Lộ trình bài học</p>
+          <ol className="space-y-1">
+            {sections.map((section) => (
+              <li key={section.id}>
+                <button type="button" onClick={() => scrollToId(`section-${section.id}`)} className="text-left text-sm hover:text-primary-600">
+                  <span className="font-semibold text-primary-600">{section.number ? `Phần ${section.number}` : '•'}</span> {section.content.title}
+                </button>
+              </li>
+            ))}
+          </ol>
         </Card>
-      </aside>
+      )}
+    </header>
+  )
+}
+
+function SectionHeading({ block, number }) {
+  return (
+    <div id={`section-${block.id}`} className="scroll-mt-20 pt-6">
+      {number && <p className="text-xs font-bold uppercase tracking-widest text-accent-600">Phần {number}</p>}
+      <h2 className="text-2xl font-extrabold">{block.content.title}</h2>
+      <hr className="mt-3 border-primary-100" />
     </div>
   )
 }
 
-function Outline({ course, currentId, fullAccess }) {
+// Mép phải: thanh chấm theo Phần (sáng ở Phần đang đọc) + nút mở SQL Playground
+function SectionRail({ sections, hasPlayground, onOpen }) {
+  const [active, setActive] = useState(null)
+
+  useEffect(() => {
+    const onScroll = () => {
+      let current = sections[0]?.id ?? null
+      for (const section of sections) {
+        const element = document.getElementById(`section-${section.id}`)
+        if (element && element.getBoundingClientRect().top < window.innerHeight * 0.35) current = section.id
+      }
+      setActive(current)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [sections])
+
+  const tools = hasPlayground && <RailButton label="SQL Playground" onClick={() => onOpen('sql')}>SQL</RailButton>
+
   return (
-    <div className="space-y-4">
-      {course.chapters.map((chapter) => (
-        <div key={chapter.id} className="space-y-1">
-          <p className="text-xs font-bold uppercase text-muted">{chapter.title}</p>
-          {chapter.lessons.map((lesson) => {
-            const open = fullAccess || lesson.is_preview
-            const icon = lesson.completed ? '✓' : open ? '○' : '🔒'
-            const className = `flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm ${lesson.id === currentId ? 'bg-primary-50 font-bold text-primary-700' : ''}`
-            return open ? (
-              <Link key={lesson.id} to={`/learn/${lesson.id}`} className={`${className} hover:bg-primary-50`}>
-                <span className={lesson.completed ? 'text-success' : 'text-muted'}>{icon}</span> {lesson.title}
-              </Link>
-            ) : (
-              <span key={lesson.id} className={`${className} text-muted`}>{icon} {lesson.title}</span>
-            )
-          })}
+    <>
+      <div className="sticky top-24 hidden flex-col items-center gap-2 lg:flex">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            title={section.content.title}
+            onClick={() => scrollToId(`section-${section.id}`)}
+            className={`h-1 rounded-full transition-all ${active === section.id ? 'w-8 bg-primary-500' : 'w-5 bg-primary-200 hover:bg-primary-300'}`}
+          />
+        ))}
+        <div className="mt-4 flex flex-col gap-2">{tools}</div>
+      </div>
+      {/* Màn hình nhỏ: nút nổi góc phải */}
+      <div className="fixed bottom-4 right-4 z-20 flex gap-2 lg:hidden">{tools}</div>
+    </>
+  )
+}
+
+function RailButton({ label, onClick, children }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className="grid size-9 place-items-center rounded-xl bg-card text-xs font-bold text-primary-600 shadow-card hover:bg-primary-50"
+    >
+      {children}
+    </button>
+  )
+}
+
+function NextLessonCard({ course, next }) {
+  return (
+    <Link to={lessonPath(course.slug, next.slug)} className="block">
+      <Card className="flex items-center gap-4 border-2 border-primary-100 transition hover:border-primary-300">
+        <div className="flex-1 space-y-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent-600">Bài tiếp theo</p>
+          <p className="text-xl font-extrabold">{next.title}</p>
+          {next.summary && <p className="line-clamp-2 text-sm text-muted">{next.summary}</p>}
         </div>
-      ))}
-    </div>
+        <span className="text-2xl text-primary-600">→</span>
+      </Card>
+    </Link>
   )
 }
 
 // Cuối bài: đăng ký khóa / hoàn thành bài
-function CompleteBar({ data, lessonId, remainingQuizzes }) {
+function CompleteBar({ data, queryKey, remainingQuizzes }) {
   const { user } = useUser()
   const location = useLocation()
   const queryClient = useQueryClient()
   const refresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['lesson', lessonId] })
+    queryClient.invalidateQueries({ queryKey })
     queryClient.invalidateQueries({ queryKey: ['course-detail'] })
     queryClient.invalidateQueries({ queryKey: ['my-courses'] })
   }
   const enroll = useMutation({ mutationFn: () => enrollCourse(data.course.id), onSuccess: refresh })
-  const complete = useMutation({ mutationFn: () => completeLesson(lessonId), onSuccess: refresh })
+  const complete = useMutation({ mutationFn: () => completeLesson(data.lesson.id), onSuccess: refresh })
   const error = enroll.error ?? complete.error
 
   let content
@@ -195,7 +333,7 @@ function CompleteBar({ data, lessonId, remainingQuizzes }) {
   } else {
     content = (
       <>
-        {remainingQuizzes > 0 && <p className="text-sm text-muted">Còn {remainingQuizzes} khối quiz chưa trả lời.</p>}
+        {remainingQuizzes > 0 && <p className="text-sm text-muted">Còn {remainingQuizzes} khối quiz chưa làm xong.</p>}
         <Button variant="accent" size="lg" onClick={() => complete.mutate()} disabled={remainingQuizzes > 0 || complete.isPending}>
           Hoàn thành bài
         </Button>

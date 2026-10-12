@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as Animations from './Animations'
-import { ANIMATIONS, BLOCK_TYPES, youtubeEmbedUrl } from './blockTypes'
+import { ANIMATIONS, BLOCK_TYPES, sectionNumbers, youtubeEmbedUrl } from './blockTypes'
 
 describe('ANIMATIONS', () => {
   it('mỗi tên hoạt ảnh trong trình soạn đều có component', () => {
@@ -8,9 +8,17 @@ describe('ANIMATIONS', () => {
   })
 })
 
+describe('sectionNumbers', () => {
+  const section = (title) => ({ type: 'section', content: { title } })
+  it('đánh số Phần, bỏ qua Kiểm tra kiến thức và Tổng kết', () => {
+    const blocks = [section('Khái niệm'), { type: 'markdown', content: {} }, section('Thực hành'), section('Kiểm tra kiến thức'), section('Tổng kết')]
+    expect(sectionNumbers(blocks)).toEqual([1, null, 2, null, null])
+  })
+})
+
 describe('BLOCK_TYPES', () => {
-  it('có đủ 6 loại khối như backend', () => {
-    expect(Object.keys(BLOCK_TYPES)).toEqual(['markdown', 'video', 'quiz', 'animation', 'code', 'flashcard'])
+  it('có đủ các loại khối như backend', () => {
+    expect(Object.keys(BLOCK_TYPES)).toEqual(['section', 'markdown', 'video', 'quiz', 'animation', 'code', 'flashcard'])
   })
 
   it('mỗi lần tạo trả về đối tượng mới, không dùng chung', () => {

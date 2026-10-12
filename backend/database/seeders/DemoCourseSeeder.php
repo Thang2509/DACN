@@ -18,6 +18,42 @@ class DemoCourseSeeder extends Seeder
         INSERT INTO enrollments VALUES (1, 'SQL'), (1, 'JavaScript'), (2, 'SQL'), (3, 'CTDL');
         SQL;
 
+    // Video mở đầu mẫu: video tiếng Việt công khai trên YouTube (chỉ dùng để demo), theo slug bài học.
+    // Kênh nguồn ghi trong docs/video-mau.md.
+    private const INTRO_VIDEOS = [
+        'javascript-la-gi' => 'mtz7BpE_EPs',
+        'bien-let-va-const' => 'Lkn6VtE_1mY',
+        'kieu-du-lieu' => 'Sb9I87vT1Pg',
+        'cau-lenh-ifelse' => 'g6AVmwqtnyw',
+        'vong-lap-for-va-while' => '1g7xgyYTBo4',
+        'ham' => 'HZoubQZ2RRU',
+        'mang-map-va-filter' => 'jFdCDc0j8P4',
+        'doi-tuong' => '_-2aUIxsbRQ',
+        'co-so-du-lieu-va-sql-la-gi' => 'iuOoUBINN7g',
+        'bang-cot-va-dong' => 'xWhERv3BAFY',
+        'select-lay-du-lieu' => 'KPdxLcbHlso',
+        'where-loc-du-lieu' => 'FUotBX7zNs8',
+        'order-by-va-limit' => 'oatkAp3ezyI',
+        'ham-gop-count-sum-avg' => 'TfqI82Ov5ek',
+        'group-by-va-having' => 'v5JRPBUyD5o',
+        'join-noi-bang' => 'fNf75u_7GXw',
+        'do-phuc-tap-thuat-toan-big-o' => 'H3cYspcoSaA',
+        'mang' => 'amJyvX-b71A',
+        'ngan-xep-stack' => 'lbYn3d2G504',
+        'hang-doi-queue' => '1aueR7kYLC4',
+        'danh-sach-lien-ket' => '2Xt6MNyyhc4',
+        'tim-kiem-nhi-phan' => 'c3XOLJwdxWU',
+        'sap-xep-noi-bot' => 'R06eV02zg6A',
+        'sap-xep-nhanh-quick-sort' => 'UMurKHjBc6A',
+    ];
+
+    // Bài "Tổng kết khóa học" (slug trùng nhau giữa các khóa) dùng video tổng quan theo khóa
+    private const SUMMARY_VIDEOS = [
+        'javascript-nen-tang' => 'NEgDBzHg9_c',
+        'sql-co-ban' => 'z8vTc8dPXCI',
+        'cau-truc-du-lieu-giai-thuat' => 'uHpzKcm8qh0',
+    ];
+
     public function run(User $instructor): void
     {
         $path = LearningPath::create([
@@ -34,7 +70,7 @@ class DemoCourseSeeder extends Seeder
 
     private function createCourse(User $instructor, array $data): Course
     {
-        $course = new Course(collect($data)->only(['title', 'summary', 'description', 'level', 'price'])->all());
+        $course = new Course(collect($data)->only(['title', 'summary', 'description', 'level', 'category', 'price', 'playground_sql'])->all());
         $course->instructor_id = $instructor->id;
         $course->slug = Str::slug($data['title']);
         $course->status = Course::STATUS_PUBLISHED;
@@ -46,11 +82,17 @@ class DemoCourseSeeder extends Seeder
             $chapter = $course->chapters()->create(['title' => $chapterTitle, 'position' => $c + 1]);
 
             foreach ($lessons as $l => $lessonData) {
-                $lesson = $chapter->lessons()->create([
+                $lesson = $chapter->lessons()->make([
                     'title' => $lessonData['title'],
+                    'summary' => $this->summaryOf($lessonData['text']),
+                    'duration_minutes' => $lessonData['minutes'] ?? 15,
                     'position' => $l + 1,
                     'is_preview' => $isFirstLesson, // bài đầu tiên cho học thử
                 ]);
+                $lesson->slug = Str::slug($lessonData['title']); // tên bài trong một khóa mẫu không trùng nhau
+                $videoId = self::INTRO_VIDEOS[$lesson->slug] ?? self::SUMMARY_VIDEOS[$course->slug] ?? null;
+                $lesson->intro_video_url = $videoId ? "https://www.youtube.com/watch?v={$videoId}" : null;
+                $lesson->save();
                 $isFirstLesson = false;
 
                 foreach ($this->blocksOf($lessonData) as $b => [$type, $content]) {
@@ -62,28 +104,56 @@ class DemoCourseSeeder extends Seeder
         return $course;
     }
 
-    // Thứ tự khối: lý thuyết → hoạt ảnh → code → quiz → flashcard
+    // Bài chia Phần kiểu Sydexa: Khái niệm → Minh họa → Thực hành → Kiểm tra kiến thức → Tổng kết
     private function blocksOf(array $lesson): array
     {
-        $blocks = [];
-        if (isset($lesson['text'])) {
-            $blocks[] = ['markdown', ['text' => $lesson['text']]];
+        $blocks = [['section', ['title' => 'Khái niệm']], ['markdown', ['text' => $lesson['text']]]];
+        if (isset($lesson['check'])) {
+            $blocks[] = ['quiz', $this->quiz('quick', [$lesson['check']])];
         }
         if (isset($lesson['animation'])) {
+            $blocks[] = ['section', ['title' => 'Minh họa']];
+            if (isset($lesson['predict'])) {
+                $blocks[] = ['quiz', $this->quiz('predict', [$lesson['predict']])];
+            }
             $blocks[] = ['animation', $lesson['animation']];
         }
         if (isset($lesson['code'])) {
+            $blocks[] = ['section', ['title' => 'Thực hành']];
             $blocks[] = ['code', $lesson['code']];
         }
         if (isset($lesson['quiz'])) {
-            [$question, $options, $answer, $explanation] = $lesson['quiz'];
-            $blocks[] = ['quiz', ['questions' => [compact('question', 'options', 'answer', 'explanation')]]];
+            // Một câu dạng [hỏi, lựa chọn, đáp án, giải thích] hoặc danh sách nhiều câu như vậy
+            $questions = is_string($lesson['quiz'][0]) ? [$lesson['quiz']] : $lesson['quiz'];
+            $blocks[] = ['section', ['title' => 'Kiểm tra kiến thức']];
+            $blocks[] = ['quiz', $this->quiz('test', $questions)];
         }
+        $blocks[] = ['section', ['title' => 'Tổng kết']];
+        $blocks[] = ['markdown', ['text' => '**Ghi nhớ:** '.$this->summaryOf($lesson['text'])]];
         if (isset($lesson['cards'])) {
             $blocks[] = ['flashcard', ['cards' => array_map(fn ($c) => ['front' => $c[0], 'back' => $c[1]], $lesson['cards'])]];
         }
 
         return $blocks;
+    }
+
+    private function quiz(string $variant, array $questions): array
+    {
+        return [
+            'variant' => $variant,
+            'questions' => array_map(
+                fn ($q) => ['question' => $q[0], 'options' => $q[1], 'answer' => $q[2], 'explanation' => $q[3]],
+                $questions,
+            ),
+        ];
+    }
+
+    // Câu đầu tiên của phần lý thuyết (bỏ tiêu đề, code, ký hiệu Markdown) làm tóm tắt bài
+    private function summaryOf(string $text): string
+    {
+        $plain = trim(preg_replace(['/```.*?```/s', '/^#+.*$/m', '/[*`]/'], '', $text));
+
+        return Str::limit(preg_split('/(?<=[.!?])\s/u', $plain)[0], 180);
     }
 
     private function sqlCode(string $instructions, string $starter, string $solution): array
@@ -101,6 +171,8 @@ class DemoCourseSeeder extends Seeder
         return [
             'title' => 'SQL cơ bản',
             'level' => 'beginner',
+            'category' => 'database',
+            'playground_sql' => self::SQL_SETUP,
             'price' => 0,
             'summary' => 'Truy vấn cơ sở dữ liệu quan hệ từ con số 0, thực hành ngay trên trình duyệt.',
             'description' => 'Học SELECT, WHERE, ORDER BY, hàm gộp, GROUP BY và JOIN qua các bài tập với bảng dữ liệu sinh viên.',
@@ -108,7 +180,12 @@ class DemoCourseSeeder extends Seeder
                 ['Làm quen với SQL', [
                     ['title' => 'Cơ sở dữ liệu và SQL là gì?',
                         'text' => "## Cơ sở dữ liệu\nCơ sở dữ liệu (CSDL) là nơi lưu trữ dữ liệu có tổ chức. **SQL** (Structured Query Language) là ngôn ngữ để đọc và thay đổi dữ liệu trong CSDL quan hệ như MySQL, PostgreSQL, SQLite.",
-                        'quiz' => ['SQL dùng để làm gì?', ['Thiết kế giao diện web', 'Truy vấn và thao tác dữ liệu', 'Vẽ đồ họa 3D'], 1, 'SQL là ngôn ngữ truy vấn dữ liệu trong CSDL quan hệ.']],
+                        'check' => ['MySQL là gì?', ['Một ngôn ngữ lập trình', 'Một hệ quản trị CSDL quan hệ', 'Một trình duyệt web'], 1, 'MySQL là hệ quản trị CSDL, còn SQL là ngôn ngữ dùng để làm việc với nó.'],
+                        'quiz' => [
+                            ['SQL dùng để làm gì?', ['Thiết kế giao diện web', 'Truy vấn và thao tác dữ liệu', 'Vẽ đồ họa 3D'], 1, 'SQL là ngôn ngữ truy vấn dữ liệu trong CSDL quan hệ.'],
+                            ['Dữ liệu trong CSDL quan hệ được tổ chức thành?', ['Bảng', 'Thư mục', 'Hình ảnh'], 0, 'CSDL quan hệ lưu dữ liệu trong các bảng gồm dòng và cột.'],
+                            ['Hệ nào sau đây KHÔNG phải CSDL quan hệ?', ['PostgreSQL', 'SQLite', 'Microsoft Word'], 2, 'Word là phần mềm soạn thảo văn bản.'],
+                        ]],
                     ['title' => 'Bảng, cột và dòng',
                         'text' => "Dữ liệu được lưu trong **bảng**. Mỗi **cột** là một thuộc tính (tên, điểm…), mỗi **dòng** là một bản ghi. Cột **khóa chính** giúp phân biệt các dòng.",
                         'quiz' => ['Mỗi dòng trong bảng `students` biểu diễn gì?', ['Một sinh viên', 'Một thuộc tính', 'Một bảng khác'], 0, 'Mỗi dòng là một bản ghi, ở đây là một sinh viên.']],
@@ -148,6 +225,7 @@ class DemoCourseSeeder extends Seeder
         return [
             'title' => 'JavaScript nền tảng',
             'level' => 'beginner',
+            'category' => 'frontend',
             'price' => 199000,
             'summary' => 'Nắm vững biến, điều kiện, vòng lặp, hàm, mảng và đối tượng trong JavaScript.',
             'description' => 'Khóa học cho người mới bắt đầu lập trình, mỗi bài đều có ô code chạy ngay trên trình duyệt.',
@@ -195,6 +273,7 @@ class DemoCourseSeeder extends Seeder
         return [
             'title' => 'Cấu trúc dữ liệu & giải thuật',
             'level' => 'intermediate',
+            'category' => 'algorithms',
             'price' => 299000,
             'summary' => 'Big-O, ngăn xếp, hàng đợi, danh sách liên kết, tìm kiếm và sắp xếp với hoạt ảnh trực quan.',
             'description' => 'Hiểu bản chất các cấu trúc dữ liệu và thuật toán kinh điển, cài đặt bằng JavaScript.',
@@ -210,6 +289,7 @@ class DemoCourseSeeder extends Seeder
                 ['Cấu trúc tuyến tính', [
                     ['title' => 'Ngăn xếp (Stack)',
                         'text' => 'Ngăn xếp hoạt động theo **LIFO** – vào sau ra trước: `push` thêm vào đỉnh, `pop` lấy ra từ đỉnh.',
+                        'predict' => ['Ngăn xếp đang có 3, 7, 1 (1 ở đỉnh). Gọi pop() sẽ lấy ra số nào?', ['3', '7', '1'], 2, 'pop() luôn lấy phần tử ở đỉnh, tức phần tử được thêm vào sau cùng.'],
                         'animation' => ['component' => 'StackAnimation', 'params' => ['values' => [3, 7, 1]]],
                         'code' => $this->jsCode('Dùng mảng làm ngăn xếp: push 1, 2, 3 rồi pop và in phần tử lấy ra.', "const stack = []\n", '3')],
                     ['title' => 'Hàng đợi (Queue)',
@@ -225,6 +305,7 @@ class DemoCourseSeeder extends Seeder
                         'code' => $this->jsCode('Viết `binarySearch(a, x)` trả về chỉ số của x, in kết quả tìm 7.', "const a = [1, 3, 5, 7, 9]\n", '3')],
                     ['title' => 'Sắp xếp nổi bọt',
                         'text' => 'Lặp lại việc so sánh hai phần tử kề nhau và đổi chỗ nếu sai thứ tự. Đơn giản nhưng O(n²).',
+                        'predict' => ['Sau lượt duyệt đầu tiên của sắp xếp nổi bọt trên [5, 1, 4, 2, 8], phần tử nào chắc chắn đứng cuối?', ['5', '8', '1'], 1, 'Mỗi lượt duyệt đẩy phần tử lớn nhất còn lại về cuối mảng.'],
                         'animation' => ['component' => 'BubbleSortAnimation', 'params' => ['values' => [5, 1, 4, 2, 8]]],
                         'code' => $this->jsCode('Cài đặt sắp xếp nổi bọt cho mảng `a` rồi in kết quả.', "const a = [5, 1, 4, 2, 8]\n", '[ 1, 2, 4, 5, 8 ]')],
                     ['title' => 'Sắp xếp nhanh (Quick Sort)',

@@ -49,12 +49,15 @@ class CourseOutlineController extends Controller
     public function updateLesson(Request $request, Lesson $lesson)
     {
         Gate::authorize('manage-course', $lesson->chapter->course);
-        $lesson->update($request->validate([
+        $data = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:200'],
             'is_preview' => ['sometimes', 'boolean'],
-        ]));
+            'summary' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'intro_video_url' => ['sometimes', 'nullable', 'url', 'max:500'], // video mở đầu (YouTube hoặc MP4)
+            'duration_minutes' => ['sometimes', 'integer', 'min:1', 'max:600'],
+        ]);
 
-        return $lesson;
+        return $this->courses->updateLesson($lesson, $data);
     }
 
     public function destroyLesson(Lesson $lesson)

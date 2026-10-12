@@ -6,7 +6,8 @@ export const saveBlocks = (id, blocks) => api(`/instructor/lessons/${id}/blocks`
 export const uploadFile = (file) => api('/instructor/uploads', { method: 'POST', body: toFormData('file', file) })
 
 // Trình học bài (học viên)
-export const getLesson = (id) => api(`/lessons/${id}`)
-export const submitQuiz = (lessonId, blockId, answers) =>
-  api(`/lessons/${lessonId}/quiz/${blockId}`, { method: 'POST', body: { answers } })
+export const getLesson = (courseSlug, lessonSlug) => api(`/courses/${courseSlug}/lessons/${lessonSlug}`)
+// Trả lời một câu của khối quiz, máy chủ chấm ngay câu đó
+export const answerQuestion = (lessonId, blockId, question, answer) =>
+  api(`/lessons/${lessonId}/quiz/${blockId}/answer`, { method: 'POST', body: { question, answer } })
 export const completeLesson = (id) => api(`/lessons/${id}/complete`, { method: 'POST' })

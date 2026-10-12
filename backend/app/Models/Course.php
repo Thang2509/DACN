@@ -17,12 +17,15 @@ class Course extends Model
 
     public const LEVELS = ['beginner', 'intermediate', 'advanced'];
 
+    // Chủ đề hiển thị thành tab ở danh mục
+    public const CATEGORIES = ['database', 'frontend', 'backend', 'algorithms', 'devops', 'security'];
+
     public const STATUS_DRAFT = 'draft';
     public const STATUS_PENDING = 'pending';
     public const STATUS_PUBLISHED = 'published';
     public const STATUS_REJECTED = 'rejected';
 
-    protected $fillable = ['title', 'summary', 'description', 'level', 'price'];
+    protected $fillable = ['title', 'summary', 'description', 'level', 'category', 'price', 'playground_sql'];
 
     protected $hidden = ['thumbnail_path'];
 
@@ -33,6 +36,7 @@ class Course extends Model
         return [
             'price' => 'integer',
             'published_at' => 'datetime',
+            'lessons_sum_duration_minutes' => 'integer', // tổng thời lượng (withSum), MySQL trả về dạng chuỗi
         ];
     }
 
@@ -74,6 +78,7 @@ class Course extends Model
                 fn ($q) => $q->where('title', 'like', "%{$search}%")->orWhere('summary', 'like', "%{$search}%")
             ))
             ->when($filters['level'] ?? null, fn ($q, $level) => $q->where('level', $level))
+            ->when($filters['category'] ?? null, fn ($q, $category) => $q->where('category', $category))
             ->when(($filters['price'] ?? null) === 'free', fn ($q) => $q->where('price', 0))
             ->when(($filters['price'] ?? null) === 'paid', fn ($q) => $q->where('price', '>', 0))
             ->when($filters['path'] ?? null, fn ($q, $slug) => $q->whereHas('learningPaths', fn ($q) => $q->where('slug', $slug)));

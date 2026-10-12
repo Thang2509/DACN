@@ -8,7 +8,6 @@ use App\Http\Controllers\CourseOutlineController;
 use App\Http\Controllers\CourseReviewController;
 use App\Http\Controllers\LearningController;
 use App\Http\Controllers\LessonEditorController;
-use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UploadController;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +27,7 @@ Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
 Route::get('/courses', [CatalogController::class, 'index']);
 Route::get('/courses/{course:slug}', [CatalogController::class, 'show']);
 Route::get('/learning-paths', [CatalogController::class, 'paths']);
-Route::get('/lessons/{lesson}', [LearningController::class, 'lesson']);
+Route::get('/courses/{course:slug}/lessons/{lessonSlug}', [LearningController::class, 'lesson']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -36,13 +35,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Học tập
     Route::get('/my/courses', [LearningController::class, 'myCourses']);
     Route::post('/courses/{course}/enroll', [LearningController::class, 'enroll'])->middleware('verified');
-    Route::post('/lessons/{lesson}/quiz/{block}', [LearningController::class, 'submitQuiz'])->scopeBindings();
+    Route::post('/lessons/{lesson}/quiz/{block}/answer', [LearningController::class, 'answerQuestion'])->scopeBindings();
     Route::post('/lessons/{lesson}/complete', [LearningController::class, 'complete']);
 
-    Route::get('/notes', [NoteController::class, 'index']);
-    Route::post('/lessons/{lesson}/notes', [NoteController::class, 'store']);
-    Route::put('/notes/{note}', [NoteController::class, 'update']);
-    Route::delete('/notes/{note}', [NoteController::class, 'destroy']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/email/verification-notification', [AuthController::class, 'resendVerification'])->middleware('throttle:6,1');
 

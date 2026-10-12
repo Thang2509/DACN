@@ -81,6 +81,19 @@ class CatalogTest extends TestCase
         $this->actingAs($student)->getJson("/api/courses/{$course->slug}")
             ->assertJsonPath('enrolled', true)
             ->assertJsonPath('progress.total', 2)
-            ->assertJsonPath('progress.next_lesson_id', $lessons[0]->id);
+            ->assertJsonPath('progress.next_lesson.id', $lessons[0]->id)
+            ->assertJsonPath('chapters.0.lessons.0.slug', $lessons[0]->slug);
+    }
+
+    public function test_loc_theo_chu_de_va_tong_thoi_luong(): void
+    {
+        $course = Course::factory()->published()->create(['category' => 'database']);
+        Course::factory()->published()->create(['category' => 'frontend']);
+        Lesson::factory()->count(2)->for(Chapter::factory()->for($course))->create(['duration_minutes' => 30]);
+
+        $this->getJson('/api/courses?category=database')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.lessons_sum_duration_minutes', 60);
+        $this->getJson('/api/courses?category=khong-co')->assertJsonValidationErrors('category');
     }
 }

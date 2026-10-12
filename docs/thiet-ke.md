@@ -7,7 +7,7 @@ Tài liệu Đợt 1 (19–25/10): tác nhân, Use Case, ERD, kiến trúc. Quy 
 | Tác nhân | Mô tả |
 | --- | --- |
 | Khách | Chưa đăng nhập: xem trang chủ, danh sách và chi tiết khóa học, bài học thử |
-| Học viên | Học bài, ghi chú, ôn flashcard, nhận thưởng, nuôi thú cưng, mua khóa học |
+| Học viên | Học bài, ôn flashcard, nhận thưởng, nuôi thú cưng, mua khóa học |
 | Giảng viên | Học viên được quản trị viên cấp quyền; soạn khóa học, chương, bài, khối nội dung |
 | Quản trị viên | Quản lý người dùng, duyệt khóa học, cấu hình nhiệm vụ/huy hiệu/voucher, xem thống kê |
 | MoMo (hệ thống ngoài) | Cổng thanh toán sandbox, gọi IPN báo kết quả giao dịch |
@@ -47,7 +47,6 @@ flowchart LR
   HV --- UC13([UC13 Học bài theo khối nội dung])
   UC13 -. extend .-> UC14([UC14 Làm quiz])
   UC13 -. extend .-> UC15([UC15 Chạy code sandbox])
-  HV --- UC16([UC16 Ghi chú theo khối / mốc video])
   HV --- UC17([UC17 Ôn tập flashcard SM-2])
   HV --- UC18([UC18 Xem tiến độ, XP, cấp, chuỗi ngày])
   HV --- UC19([UC19 Làm nhiệm vụ ngày/tuần])
@@ -152,6 +151,8 @@ erDiagram
     string summary
     text description
     enum level "beginner | intermediate | advanced"
+    string category "database | frontend | backend | algorithms | devops | security"
+    text playground_sql "SQL tạo bảng mẫu cho SQL Playground"
     string thumbnail_path
     int price "VND, 0 = miễn phí"
     enum status "draft | pending | published | rejected"
@@ -168,13 +169,16 @@ erDiagram
     bigint id PK
     bigint chapter_id FK
     string title
+    string slug "duy nhất trong khóa"
+    text summary
+    int duration_minutes
     int position
     bool is_preview "cho học thử"
   }
   lesson_blocks {
     bigint id PK
     bigint lesson_id FK
-    enum type "markdown | video | quiz | animation | code | flashcard"
+    enum type "section | markdown | video | quiz | animation | code | flashcard"
     json content
     int position
   }
@@ -190,9 +194,6 @@ erDiagram
   lessons ||--o{ lesson_progress : ""
   users ||--o{ quiz_attempts : ""
   lesson_blocks ||--o{ quiz_attempts : ""
-  users ||--o{ notes : ""
-  lessons ||--o{ notes : ""
-  lesson_blocks |o--o{ notes : "gắn khối"
   users ||--o{ flashcard_reviews : ""
   lesson_blocks ||--o{ flashcard_reviews : ""
   users ||--o| study_plans : ""
@@ -211,15 +212,9 @@ erDiagram
   quiz_attempts {
     bigint user_id FK
     bigint lesson_block_id FK
-    json answers
+    json answers "null ở câu chưa trả lời"
     int correct_count
-  }
-  notes {
-    bigint user_id FK
-    bigint lesson_id FK
-    bigint lesson_block_id FK
-    int video_time "giây, null nếu không gắn video"
-    text content
+    timestamp completed_at "trả lời hết câu mới xong"
   }
   flashcard_reviews {
     bigint user_id FK "UK(user, block, card_index)"

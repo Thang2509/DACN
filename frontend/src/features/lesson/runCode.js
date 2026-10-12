@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import initSqlJs from 'sql.js'
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 import workerSource from './sandboxWorker.js?raw'
@@ -57,18 +58,84 @@ export function runJavaScript(code) {
 let sqlLoader
 const loadSql = () => (sqlLoader ??= initSqlJs({ locateFile: () => sqlWasmUrl }))
 
-// Chạy SQL trên CSDL tạm trong trình duyệt (setup tạo bảng mẫu trước), trả về { results, error }
+/**
+ * Chạy SQL trên CSDL tạm trong trình duyệt: setup tạo bảng mẫu trước rồi mới chạy query.
+ * Trả về { results, error, tables }: tables là dữ liệu các bảng sau khi chạy, đã đánh dấu dòng thêm/sửa.
+ * query rỗng = chỉ xem dữ liệu mẫu.
+ */
 export async function runSql(setup, query) {
   const SQL = await loadSql()
   const db = new SQL.Database()
   try {
-    if (setup) db.run(setup)
-    return { results: db.exec(query), error: null }
-  } catch (error) {
-    return { results: [], error: error.message }
+    try {
+      if (setup) db.run(setup)
+    } catch (error) {
+      return { results: [], error: `Lỗi ở SQL tạo dữ liệu mẫu: ${error.message}`, tables: [] }
+    }
+    const before = readTables(db)
+    try {
+      const results = query?.trim() ? db.exec(query) : []
+      return { results, error: null, tables: diffTables(before, readTables(db)) }
+    } catch (error) {
+      // Lệnh lỗi giữa chừng vẫn có thể đã đổi dữ liệu ở các câu lệnh trước đó
+      return { results: [], error: error.message, tables: diffTables(before, readTables(db)) }
+    }
   } finally {
     db.close()
   }
+}
+
+// Dữ liệu mẫu ban đầu (chạy SQL setup, chưa chạy gì thêm), lưu cache theo nội dung setup
+export function useSetupTables(setup) {
+  return useQuery({
+    queryKey: ['sql-setup-tables', setup],
+    queryFn: () => runSql(setup, ''),
+    enabled: !!setup?.trim(),
+    staleTime: Infinity,
+  })
+}
+
+const ROW_LIMIT = 50
+const rowsOf = (results) => results[0]?.values ?? []
+
+// Đọc mọi bảng: cột (tên, kiểu, khóa chính), tối đa 50 dòng đầu kèm rowid để so sánh trước/sau
+function readTables(db) {
+  const names = rowsOf(db.exec("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"))
+  return names.map(([name]) => {
+    const table = `"${name.replaceAll('"', '""')}"`
+    const columns = rowsOf(db.exec(`PRAGMA table_info(${table})`))
+      .map(([, column, type, , , pk]) => ({ name: column, type, pk: pk > 0 }))
+    const total = rowsOf(db.exec(`SELECT COUNT(*) FROM ${table}`))[0][0]
+    let rows
+    try {
+      rows = rowsOf(db.exec(`SELECT rowid, * FROM ${table} LIMIT ${ROW_LIMIT}`)).map(([rowid, ...values]) => ({ rowid, values }))
+    } catch {
+      // Bảng WITHOUT ROWID: không theo dõi được thay đổi từng dòng
+      rows = rowsOf(db.exec(`SELECT * FROM ${table} LIMIT ${ROW_LIMIT}`)).map((values) => ({ rowid: null, values }))
+    }
+    return { name, columns, rows, total }
+  })
+}
+
+/**
+ * So dữ liệu sau khi chạy với trước khi chạy:
+ * dòng có rowid mới → 'inserted', cùng rowid nhưng khác giá trị → 'updated', deleted = số dòng bị xóa.
+ */
+export function diffTables(before, after) {
+  return after.map((table) => {
+    const old = before.find((item) => item.name === table.name)
+    if (!old) {
+      return { ...table, isNew: true, deleted: 0, rows: table.rows.map((row) => ({ ...row, status: 'inserted' })) }
+    }
+    const oldValues = new Map(old.rows.map((row) => [row.rowid, JSON.stringify(row.values)]))
+    const rows = table.rows.map((row) => {
+      if (row.rowid === null) return { ...row, status: null }
+      if (!oldValues.has(row.rowid)) return { ...row, status: 'inserted' }
+      return { ...row, status: oldValues.get(row.rowid) === JSON.stringify(row.values) ? null : 'updated' }
+    })
+    const inserted = rows.filter((row) => row.status === 'inserted').length
+    return { ...table, rows, deleted: Math.max(0, old.total - (table.total - inserted)) }
+  })
 }
 
 // So kết quả của học viên với lời giải: chỉ so giá trị (bỏ qua tên cột);

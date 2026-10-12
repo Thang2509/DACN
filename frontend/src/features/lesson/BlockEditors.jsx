@@ -4,7 +4,8 @@ import remarkGfm from 'remark-gfm'
 import CodeEditor from '../../components/CodeEditor'
 import { Button, Input, Select, Textarea } from '../../components/ui'
 import { uploadFile } from './api'
-import { ANIMATIONS, newQuestion, youtubeEmbedUrl } from './blockTypes'
+import { ANIMATIONS, newQuestion, QUIZ_VARIANTS, youtubeEmbedUrl } from './blockTypes'
+import { SetupPreview } from './TableViewer'
 
 // Form soạn nội dung cho từng loại khối; onChange nhận content mới
 export default function BlockEditor({ block, onChange }) {
@@ -66,12 +67,30 @@ function VideoEditor({ content, onChange }) {
   )
 }
 
+function SectionEditor({ content, onChange }) {
+  return (
+    <Input
+      label="Tiêu đề phần"
+      placeholder="Vd: Khái niệm, Thực hành… (đặt “Kiểm tra kiến thức” hoặc “Tổng kết” cho phần cuối bài, không đánh số)"
+      value={content.title}
+      onChange={(e) => onChange({ ...content, title: e.target.value })}
+    />
+  )
+}
+
 function QuizEditor({ content, onChange }) {
   const questions = content.questions
   const setQuestion = (index, question) => onChange({ ...content, questions: replaceAt(questions, index, question) })
 
   return (
     <div className="space-y-4">
+      <Select
+        label="Kiểu quiz"
+        options={QUIZ_VARIANTS}
+        value={content.variant ?? 'quick'}
+        onChange={(e) => onChange({ ...content, variant: e.target.value })}
+        className="max-w-xs"
+      />
       {questions.map((q, index) => (
         <div key={index} className="space-y-3 rounded-xl border-2 border-primary-100 p-4">
           <div className="flex items-start gap-2">
@@ -153,7 +172,8 @@ function CodeBlockEditor({ content, onChange }) {
         <Select label="Ngôn ngữ" options={{ javascript: 'JavaScript', sql: 'SQL' }} {...bind('language')} />
         <Input label="Đề bài" {...bind('instructions')} />
       </div>
-      {isSql && <LabeledCode label="SQL tạo bảng và dữ liệu mẫu (chạy trước, học viên không thấy)" {...code('setup')} />}
+      {isSql && <LabeledCode label="SQL tạo bảng và dữ liệu mẫu (chạy trước; học viên thấy dạng bảng, không thấy câu lệnh)" {...code('setup')} />}
+      {isSql && <SetupPreview sql={content.setup} />}
       <div className="grid gap-3 md:grid-cols-2">
         <LabeledCode label="Code ban đầu" {...code('starter')} />
         <LabeledCode label="Lời giải" {...code('solution')} />
@@ -197,6 +217,7 @@ function FlashcardEditor({ content, onChange }) {
 }
 
 const EDITORS = {
+  section: SectionEditor,
   markdown: MarkdownEditor,
   video: VideoEditor,
   quiz: QuizEditor,

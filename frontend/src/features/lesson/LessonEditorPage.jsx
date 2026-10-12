@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Badge, Button, Card } from '../../components/ui'
+import { Alert, Badge, Button, Card, Input, Textarea } from '../../components/ui'
+import { fieldError } from '../../lib/api'
+import { useForm } from '../../lib/useForm'
+import { lessonPath, updateLesson } from '../courses/api'
 import { moveItem } from '../../lib/reorder'
-import { getLessonEditor, saveBlocks } from './api'
+import { getLessonEditor, saveBlocks, uploadFile } from './api'
 import BlockEditor from './BlockEditors'
 import { BLOCK_TYPES } from './blockTypes'
 
@@ -62,7 +65,7 @@ function Editor({ lesson }) {
           <Link to={`/instructor/courses/${course.id}`} className="text-sm font-semibold text-primary-600">← {course.title}</Link>
           <h1 className="truncate text-2xl font-extrabold">{lesson.title}</h1>
         </div>
-        <Link to={`/learn/${lesson.id}`} className="ml-auto text-sm font-semibold text-primary-600" title="Lưu bài trước để xem bản mới nhất">
+        <Link to={lessonPath(course.slug, lesson.slug)} className="ml-auto text-sm font-semibold text-primary-600" title="Lưu bài trước để xem bản mới nhất">
           Xem như học viên
         </Link>
         <span className="text-sm text-muted">{dirty ? 'Chưa lưu' : 'Đã lưu'}</span>
@@ -70,6 +73,8 @@ function Editor({ lesson }) {
           {save.isPending ? 'Đang lưu…' : 'Lưu bài'}
         </Button>
       </div>
+
+      <LessonInfoForm lesson={lesson} />
 
       {save.error && <Alert tone="danger">Chưa lưu được: {save.error.errors ? 'kiểm tra các khối được đánh dấu đỏ.' : save.error.message}</Alert>}
       {blocks.length === 0 && <Card className="text-center text-muted">Bài học chưa có khối nào. Thêm khối ở bên dưới.</Card>}
@@ -83,7 +88,7 @@ function Editor({ lesson }) {
             if (dragIndex !== null) changeOrder(moveItem(blocks, dragIndex, index))
             setDragIndex(null)
           }}
-          className={`rounded-2xl bg-white shadow-card transition
+          className={`rounded-2xl bg-card shadow-card transition
             ${errorsOf(index).length ? 'ring-2 ring-danger' : ''}
             ${dragIndex === index ? 'opacity-40' : ''}
             ${dragIndex !== null && dragIndex !== index ? 'outline-2 outline-dashed outline-primary-300' : ''}`}
@@ -138,6 +143,50 @@ function Editor({ lesson }) {
         ))}
       </Card>
     </div>
+  )
+}
+
+// Tóm tắt (hiện dưới tiêu đề bài) và thời lượng ước tính
+function LessonInfoForm({ lesson }) {
+  const queryClient = useQueryClient()
+  const { values, setValues, bind } = useForm({
+    summary: lesson.summary ?? '',
+    intro_video_url: lesson.intro_video_url ?? '',
+    duration_minutes: lesson.duration_minutes,
+  })
+  const upload = useMutation({
+    mutationFn: uploadFile,
+    onSuccess: ({ url }) => setValues((current) => ({ ...current, intro_video_url: url })),
+  })
+  const save = useMutation({
+    mutationFn: () => updateLesson(lesson.id, { ...values, duration_minutes: Number(values.duration_minutes) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['course'] }),
+  })
+  const submit = (e) => {
+    e.preventDefault()
+    save.mutate()
+  }
+
+  return (
+    <Card>
+      <form className="grid gap-4 md:grid-cols-[1fr_160px_auto] md:items-end" onSubmit={submit}>
+        <Textarea label="Tóm tắt bài học" rows={2} {...bind('summary')} error={fieldError(save.error, 'summary')} />
+        <Input label="Thời lượng (phút)" type="number" min="1" {...bind('duration_minutes')} error={fieldError(save.error, 'duration_minutes')} />
+        <Button variant="outline" disabled={save.isPending}>{save.isSuccess ? 'Đã lưu ✓' : 'Lưu thông tin'}</Button>
+        <div className="flex items-end gap-3 md:col-span-3">
+          <Input
+            label="Video mở đầu (link YouTube hoặc MP4, hiện ngay dưới tiêu đề bài)"
+            placeholder="https://www.youtube.com/watch?v=..."
+            {...bind('intro_video_url')}
+            error={fieldError(save.error, 'intro_video_url') ?? fieldError(upload.error, 'file')}
+          />
+          <label className="shrink-0 cursor-pointer pb-3 text-sm font-semibold text-primary-600">
+            {upload.isPending ? 'Đang tải…' : 'Tải MP4 lên'}
+            <input type="file" accept="video/mp4" className="hidden" onChange={(e) => e.target.files[0] && upload.mutate(e.target.files[0])} />
+          </label>
+        </div>
+      </form>
+    </Card>
   )
 }
 

@@ -11,6 +11,9 @@ class SaveBlocksRequest extends FormRequest
 {
     // Quy tắc cho phần content của từng loại khối
     private const CONTENT_RULES = [
+        'section' => [
+            'title' => 'required|string|max:200',
+        ],
         'markdown' => [
             'text' => 'required|string|max:50000',
         ],
@@ -19,6 +22,7 @@ class SaveBlocksRequest extends FormRequest
             'caption' => 'nullable|string|max:200',
         ],
         'quiz' => [
+            'variant' => 'nullable|in:quick,predict,test', // Quiz nhanh / Dự đoán trước khi xem / Kiểm tra kiến thức
             'questions' => 'required|array|min:1|max:20',
             'questions.*.question' => 'required|string|max:1000',
             'questions.*.options' => 'required|array|min:2|max:6',

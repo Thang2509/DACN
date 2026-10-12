@@ -79,6 +79,38 @@ class CourseManagementTest extends TestCase
         $this->assertSame($chapter2, Lesson::find($lesson2)->chapter_id);
     }
 
+    public function test_slug_bai_hoc_khong_trung_trong_khoa(): void
+    {
+        $chapter = Chapter::factory()->create();
+        $this->actingAs($chapter->course->instructor);
+
+        $first = $this->postJson("/api/instructor/chapters/{$chapter->id}/lessons", ['title' => 'Mảng'])->assertJsonPath('slug', 'mang')->json('id');
+        $this->postJson("/api/instructor/chapters/{$chapter->id}/lessons", ['title' => 'Mảng'])->assertJsonPath('slug', 'mang-2');
+
+        // Khóa còn nháp: đổi tên thì đổi slug; lưu tóm tắt và thời lượng
+        $this->putJson("/api/instructor/lessons/{$first}", [
+            'title' => 'Mảng động',
+            'summary' => 'Mảng tự giãn',
+            'duration_minutes' => 20,
+            'intro_video_url' => 'https://youtu.be/dQw4w9WgXcQ',
+        ])
+            ->assertOk()
+            ->assertJsonPath('slug', 'mang-dong')
+            ->assertJsonPath('duration_minutes', 20)
+            ->assertJsonPath('intro_video_url', 'https://youtu.be/dQw4w9WgXcQ');
+        $this->putJson("/api/instructor/lessons/{$first}", ['intro_video_url' => 'khong-phai-link'])
+            ->assertJsonValidationErrors('intro_video_url');
+    }
+
+    public function test_khoa_da_xuat_ban_giu_nguyen_slug_bai(): void
+    {
+        $lesson = Lesson::factory()->for(Chapter::factory()->for(Course::factory()->published()))->create(['slug' => 'bai-cu']);
+
+        $this->actingAs($lesson->chapter->course->instructor)
+            ->putJson("/api/instructor/lessons/{$lesson->id}", ['title' => 'Tên mới'])
+            ->assertJsonPath('slug', 'bai-cu');
+    }
+
     public function test_sap_xep_thieu_bai_thi_bi_tu_choi(): void
     {
         $lesson = Lesson::factory()->create();

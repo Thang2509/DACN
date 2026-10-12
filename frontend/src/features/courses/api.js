@@ -2,6 +2,19 @@ import { api, toFormData, toQuery } from '../../lib/api'
 
 export const LEVEL_OPTIONS = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 
+// Chủ đề khóa học (tab ở trang danh mục), khớp Course::CATEGORIES ở backend
+export const CATEGORY_OPTIONS = {
+  database: 'Database',
+  frontend: 'Frontend',
+  backend: 'Backend',
+  algorithms: 'Thuật toán',
+  devops: 'DevOps',
+  security: 'Bảo mật',
+}
+
+// Đường dẫn trang học bài: /courses/sql-co-ban/lessons/select-lay-du-lieu
+export const lessonPath = (courseSlug, lessonSlug) => `/courses/${courseSlug}/lessons/${lessonSlug}`
+
 // Danh mục và học viên
 export const getCourses = (filters) => api(`/courses${toQuery(filters)}`)
 export const getCourseDetail = (slug) => api(`/courses/${slug}`)

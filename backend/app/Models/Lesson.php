@@ -11,11 +11,11 @@ class Lesson extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'position', 'is_preview'];
+    protected $fillable = ['title', 'summary', 'intro_video_url', 'duration_minutes', 'position', 'is_preview'];
 
     protected function casts(): array
     {
-        return ['is_preview' => 'boolean'];
+        return ['is_preview' => 'boolean', 'duration_minutes' => 'integer'];
     }
 
     public function chapter(): BelongsTo

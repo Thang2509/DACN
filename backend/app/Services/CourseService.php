@@ -109,9 +109,27 @@ class CourseService
 
     public function addLesson(Chapter $chapter, string $title): Lesson
     {
-        $position = (int) $chapter->lessons()->reorder()->max('position') + 1;
+        $lesson = $chapter->lessons()->make([
+            'title' => $title,
+            'position' => (int) $chapter->lessons()->reorder()->max('position') + 1,
+        ]);
+        $lesson->slug = $this->uniqueLessonSlug($chapter->course, $title);
+        $lesson->save();
 
-        return $chapter->lessons()->create(['title' => $title, 'position' => $position]);
+        return $lesson;
+    }
+
+    public function updateLesson(Lesson $lesson, array $data): Lesson
+    {
+        $lesson->fill($data);
+        $course = $lesson->chapter->course;
+        // Bài của khóa đã xuất bản giữ nguyên slug để không làm hỏng đường dẫn cũ
+        if ($lesson->isDirty('title') && $course->isEditableDraft()) {
+            $lesson->slug = $this->uniqueLessonSlug($course, $lesson->title, $lesson->id);
+        }
+        $lesson->save();
+
+        return $lesson;
     }
 
     /**
@@ -180,6 +198,23 @@ class CourseService
         $suffix = 2;
         while (Course::where('slug', $slug)->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->exists()) {
             $slug = $base.'-'.$suffix++;
+        }
+
+        return $slug;
+    }
+
+    // Slug bài học chỉ cần không trùng trong cùng một khóa
+    private function uniqueLessonSlug(Course $course, string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($title) ?: 'bai-hoc';
+        $taken = $course->lessons()
+            ->when($ignoreId, fn ($q) => $q->where('lessons.id', '!=', $ignoreId))
+            ->pluck('lessons.slug')
+            ->all();
+
+        $slug = $base;
+        for ($i = 2; in_array($slug, $taken, true); $i++) {
+            $slug = "{$base}-{$i}";
         }
 
         return $slug;
