@@ -15,8 +15,12 @@ export function newQuestion() {
 // Tên các component hoạt ảnh (sẽ cài đặt ở trình học bài)
 export const ANIMATIONS = ['StackAnimation', 'BubbleSortAnimation']
 
-// Link YouTube (watch, youtu.be, shorts, embed) → link nhúng; không phải YouTube thì trả null
+// Link YouTube (watch, youtu.be, shorts, embed) → mã video 11 ký tự; không phải YouTube thì trả null
+export function youtubeId(url) {
+  return url?.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/)?.[1] ?? null
+}
+
 export function youtubeEmbedUrl(url) {
-  const match = url?.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/)
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null
+  const id = youtubeId(url)
+  return id ? `https://www.youtube.com/embed/${id}` : null
 }

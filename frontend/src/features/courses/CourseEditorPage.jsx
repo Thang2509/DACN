@@ -6,7 +6,7 @@ import { fieldError } from '../../lib/api'
 import { useForm } from '../../lib/useForm'
 import { courseKey, deleteCourse, getCourse, LEVEL_OPTIONS, submitCourse, updateCourse, uploadThumbnail } from './api'
 import CourseOutline from './CourseOutline'
-import { Thumbnail } from './InstructorCoursesPage'
+import { Thumbnail } from './CourseCard'
 
 export default function CourseEditorPage() {
   const { courseId } = useParams()

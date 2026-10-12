@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import CodeEditor from '../../components/CodeEditor'
 import { Button, Input, Select, Textarea } from '../../components/ui'
 import { uploadFile } from './api'
 import { ANIMATIONS, newQuestion, youtubeEmbedUrl } from './blockTypes'
@@ -141,8 +142,9 @@ function AnimationEditor({ content, onChange }) {
   )
 }
 
-function CodeEditor({ content, onChange }) {
+function CodeBlockEditor({ content, onChange }) {
   const bind = (field) => ({ value: content[field] ?? '', onChange: (e) => onChange({ ...content, [field]: e.target.value }) })
+  const code = (field) => ({ value: content[field] ?? '', language: content.language, onChange: (text) => onChange({ ...content, [field]: text }) })
   const isSql = content.language === 'sql'
 
   return (
@@ -151,12 +153,21 @@ function CodeEditor({ content, onChange }) {
         <Select label="Ngôn ngữ" options={{ javascript: 'JavaScript', sql: 'SQL' }} {...bind('language')} />
         <Input label="Đề bài" {...bind('instructions')} />
       </div>
-      {isSql && <Textarea label="SQL tạo bảng và dữ liệu mẫu (chạy trước, học viên không thấy)" rows={4} className={CODE_FONT} {...bind('setup')} />}
+      {isSql && <LabeledCode label="SQL tạo bảng và dữ liệu mẫu (chạy trước, học viên không thấy)" {...code('setup')} />}
       <div className="grid gap-3 md:grid-cols-2">
-        <Textarea label="Code ban đầu" rows={6} className={CODE_FONT} {...bind('starter')} />
-        <Textarea label="Lời giải" rows={6} className={CODE_FONT} {...bind('solution')} />
+        <LabeledCode label="Code ban đầu" {...code('starter')} />
+        <LabeledCode label="Lời giải" {...code('solution')} />
       </div>
       {!isSql && <Input label="Kết quả in ra mong đợi (để chấm)" className={CODE_FONT} {...bind('expected')} />}
+    </div>
+  )
+}
+
+function LabeledCode({ label, ...props }) {
+  return (
+    <div className="min-w-0">
+      <span className="mb-1 block text-sm font-semibold">{label}</span>
+      <CodeEditor minHeight="6rem" {...props} />
     </div>
   )
 }
@@ -190,6 +201,6 @@ const EDITORS = {
   video: VideoEditor,
   quiz: QuizEditor,
   animation: AnimationEditor,
-  code: CodeEditor,
+  code: CodeBlockEditor,
   flashcard: FlashcardEditor,
 }

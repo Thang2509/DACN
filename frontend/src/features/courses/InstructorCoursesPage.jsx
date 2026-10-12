@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import CourseStatusBadge from '../../components/CourseStatusBadge'
 import { Button, Card, Input, Select } from '../../components/ui'
 import { fieldError } from '../../lib/api'
-import { formatPrice } from '../../lib/format'
 import { useForm } from '../../lib/useForm'
-import { createCourse, getMyCourses, LEVEL_OPTIONS } from './api'
+import { createCourse, getTeachingCourses, LEVEL_OPTIONS } from './api'
+import CourseCard from './CourseCard'
 
 export default function InstructorCoursesPage() {
-  const { data: courses = [], isLoading } = useQuery({ queryKey: ['instructor-courses'], queryFn: getMyCourses })
+  const { data: courses = [], isLoading } = useQuery({ queryKey: ['instructor-courses'], queryFn: getTeachingCourses })
   const [creating, setCreating] = useState(false)
 
   return (
@@ -27,7 +27,11 @@ export default function InstructorCoursesPage() {
       {isLoading && <p className="text-muted">Đang tải…</p>}
       {!isLoading && courses.length === 0 && <Card className="text-center text-muted">Bạn chưa có khóa học nào.</Card>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {courses.map((course) => <CourseCard key={course.id} course={course} />)}
+        {courses.map((course) => (
+          <CourseCard key={course.id} course={course} to={`/instructor/courses/${course.id}`}>
+            <CourseStatusBadge status={course.status} />
+          </CourseCard>
+        ))}
       </div>
     </div>
   )
@@ -57,33 +61,5 @@ function NewCourseForm({ onCancel }) {
         </div>
       </form>
     </Card>
-  )
-}
-
-function CourseCard({ course }) {
-  return (
-    <Link to={`/instructor/courses/${course.id}`}>
-      <Card className="h-full space-y-3 p-0 transition hover:-translate-y-0.5">
-        <Thumbnail course={course} />
-        <div className="space-y-2 px-5 pb-5">
-          <CourseStatusBadge status={course.status} />
-          <h3 className="text-lg font-bold">{course.title}</h3>
-          <p className="text-sm text-muted">
-            {LEVEL_OPTIONS[course.level]} · {course.lessons_count} bài · {formatPrice(course.price)}
-          </p>
-        </div>
-      </Card>
-    </Link>
-  )
-}
-
-export function Thumbnail({ course, className = 'h-36' }) {
-  if (course.thumbnail_url) {
-    return <img src={course.thumbnail_url} alt="" className={`${className} w-full rounded-t-2xl object-cover`} />
-  }
-  return (
-    <div className={`${className} grid place-items-center rounded-t-2xl bg-gradient-to-br from-primary-500 to-accent-400 text-3xl font-extrabold text-white`}>
-      {course.title.charAt(0)}
-    </div>
   )
 }

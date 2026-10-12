@@ -7,20 +7,30 @@ import { AdminUsersPage, CourseReviewPage } from './features/admin/AdminPages'
 import { canTeach, isAdmin, logout, resendVerification, useUser } from './features/auth/api'
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/AuthPages'
 import ProfilePage from './features/auth/ProfilePage'
+import CatalogPage from './features/courses/CatalogPage'
+import CourseDetailPage from './features/courses/CourseDetailPage'
 import CourseEditorPage from './features/courses/CourseEditorPage'
+import HomePage from './features/courses/HomePage'
 import InstructorCoursesPage from './features/courses/InstructorCoursesPage'
+import MyCoursesPage from './features/courses/MyCoursesPage'
+import NotesPage from './features/notes/NotesPage'
 
-// Trang nặng (three.js, markdown) tải riêng khi mở
+// Trang nặng (three.js, CodeMirror, sql.js, markdown) tải riêng khi mở
 const PetPage = lazy(() => import('./features/pet/PetPage'))
 const LessonEditorPage = lazy(() => import('./features/lesson/LessonEditorPage'))
+const LessonPlayerPage = lazy(() => import('./features/lesson/LessonPlayerPage'))
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<DesignPreview />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/courses" element={<CatalogPage />} />
+          <Route path="/courses/:slug" element={<CourseDetailPage />} />
+          <Route path="/learn/:lessonId" element={<LessonPlayerPage />} />
           <Route path="/pet" element={<PetPage />} />
+          <Route path="/design" element={<DesignPreview />} />
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -30,6 +40,8 @@ export default function App() {
 
           <Route element={<RequireUser />}>
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/my-courses" element={<MyCoursesPage />} />
+            <Route path="/notes" element={<NotesPage />} />
           </Route>
           <Route element={<RequireUser allow={canTeach} />}>
             <Route path="/instructor" element={<InstructorCoursesPage />} />
@@ -65,14 +77,19 @@ function Layout() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 border-b border-primary-100 bg-white/90 backdrop-blur">
-        <nav className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+        <nav className="mx-auto flex h-14 max-w-6xl items-center gap-5 px-4">
           <Link to="/" className="text-xl font-extrabold text-primary-700">
             Edu<span className="text-accent-500">Quest</span>
           </Link>
-          <NavItem to="/pet">Thú cưng</NavItem>
-          {canTeach(user) && <NavItem to="/instructor">Giảng dạy</NavItem>}
-          {isAdmin(user) && <NavItem to="/admin">Quản trị</NavItem>}
-          <div className="ml-auto">{user ? <UserMenu user={user} /> : <GuestButtons />}</div>
+          <div className="flex gap-5 overflow-x-auto whitespace-nowrap">
+            <NavItem to="/courses">Khóa học</NavItem>
+            {user && <NavItem to="/my-courses">Học của tôi</NavItem>}
+            {user && <NavItem to="/notes">Ghi chú</NavItem>}
+            <NavItem to="/pet">Thú cưng</NavItem>
+            {canTeach(user) && <NavItem to="/instructor">Giảng dạy</NavItem>}
+            {isAdmin(user) && <NavItem to="/admin">Quản trị</NavItem>}
+          </div>
+          <div className="ml-auto shrink-0">{user ? <UserMenu user={user} /> : <GuestButtons />}</div>
         </nav>
       </header>
       {user && !user.email_verified_at && <VerifyBanner />}

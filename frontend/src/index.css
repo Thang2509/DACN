@@ -38,6 +38,12 @@
   --color-surface: #f7f7fc;
 
   --shadow-card: 0 1px 2px rgb(28 24 56 / 0.06), 0 8px 24px -12px rgb(28 24 56 / 0.18);
+
+  --animate-drop: drop 0.3s ease-out;
+  @keyframes drop {
+    from { transform: translateY(-40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
 }
 
 body {

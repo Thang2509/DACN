@@ -62,7 +62,10 @@ function Editor({ lesson }) {
           <Link to={`/instructor/courses/${course.id}`} className="text-sm font-semibold text-primary-600">← {course.title}</Link>
           <h1 className="truncate text-2xl font-extrabold">{lesson.title}</h1>
         </div>
-        <span className="ml-auto text-sm text-muted">{dirty ? 'Chưa lưu' : 'Đã lưu'}</span>
+        <Link to={`/learn/${lesson.id}`} className="ml-auto text-sm font-semibold text-primary-600" title="Lưu bài trước để xem bản mới nhất">
+          Xem như học viên
+        </Link>
+        <span className="text-sm text-muted">{dirty ? 'Chưa lưu' : 'Đã lưu'}</span>
         <Button onClick={() => save.mutate()} disabled={!dirty || save.isPending}>
           {save.isPending ? 'Đang lưu…' : 'Lưu bài'}
         </Button>

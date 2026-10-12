@@ -28,9 +28,16 @@ export async function api(path, { method = 'GET', body } = {}) {
     const error = new Error(data?.message || res.statusText)
     error.status = res.status
     error.errors = data?.errors // lỗi kiểm tra dữ liệu (422) theo từng trường
+    error.data = data
     throw error
   }
   return data
+}
+
+// { search: 'sql', level: '' } → "?search=sql" (bỏ giá trị rỗng)
+export function toQuery(params = {}) {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null))
+  return query.size ? `?${query}` : ''
 }
 
 // Gói một tệp vào FormData để tải lên

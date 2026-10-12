@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { BLOCK_TYPES, youtubeEmbedUrl } from './blockTypes'
+import * as Animations from './Animations'
+import { ANIMATIONS, BLOCK_TYPES, youtubeEmbedUrl } from './blockTypes'
+
+describe('ANIMATIONS', () => {
+  it('mỗi tên hoạt ảnh trong trình soạn đều có component', () => {
+    for (const name of ANIMATIONS) expect(Animations[name]).toBeTypeOf('function')
+  })
+})
 
 describe('BLOCK_TYPES', () => {
   it('có đủ 6 loại khối như backend', () => {

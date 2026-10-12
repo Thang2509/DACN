@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,6 +54,34 @@ class Course extends Model
     public function learningPaths(): BelongsToMany
     {
         return $this->belongsToMany(LearningPath::class)->withPivot('position');
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function scopePublished(Builder $query): void
+    {
+        $query->where('status', self::STATUS_PUBLISHED);
+    }
+
+    // Tìm kiếm và lọc ở trang danh mục; sort "popular" cần withCount('enrollments') trước
+    public function scopeFilter(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['search'] ?? null, fn ($q, $search) => $q->where(
+                fn ($q) => $q->where('title', 'like', "%{$search}%")->orWhere('summary', 'like', "%{$search}%")
+            ))
+            ->when($filters['level'] ?? null, fn ($q, $level) => $q->where('level', $level))
+            ->when(($filters['price'] ?? null) === 'free', fn ($q) => $q->where('price', 0))
+            ->when(($filters['price'] ?? null) === 'paid', fn ($q) => $q->where('price', '>', 0))
+            ->when($filters['path'] ?? null, fn ($q, $slug) => $q->whereHas('learningPaths', fn ($q) => $q->where('slug', $slug)));
+
+        if (($filters['sort'] ?? 'newest') === 'popular') {
+            $query->orderByDesc('enrollments_count');
+        }
+        $query->latest('published_at');
     }
 
     // Còn sửa nội dung và xóa được khi chưa có học viên nhìn thấy

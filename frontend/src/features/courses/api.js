@@ -1,11 +1,19 @@
-import { api, toFormData } from '../../lib/api'
+import { api, toFormData, toQuery } from '../../lib/api'
 
 export const LEVEL_OPTIONS = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
+
+// Danh mục và học viên
+export const getCourses = (filters) => api(`/courses${toQuery(filters)}`)
+export const getCourseDetail = (slug) => api(`/courses/${slug}`)
+export const getLearningPaths = () => api('/learning-paths')
+export const enrollCourse = (id) => api(`/courses/${id}/enroll`, { method: 'POST' })
+export const getEnrolledCourses = () => api('/my/courses')
 
 // Khóa cache của một khóa học đang soạn
 export const courseKey = (id) => ['course', String(id)]
 
-export const getMyCourses = () => api('/instructor/courses')
+// Giảng viên
+export const getTeachingCourses = () => api('/instructor/courses')
 export const createCourse = (data) => api('/instructor/courses', { method: 'POST', body: data })
 export const getCourse = (id) => api(`/instructor/courses/${id}`)
 export const updateCourse = (id, data) => api(`/instructor/courses/${id}`, { method: 'PUT', body: data })
