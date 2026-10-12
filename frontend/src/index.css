@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Design system EduQuest: tím indigo (chính) + cam (nhấn) */
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary-50: #eef0ff;
+  --color-primary-100: #e0e3ff;
+  --color-primary-200: #c6caff;
+  --color-primary-300: #a3a6fd;
+  --color-primary-400: #8580f9;
+  --color-primary-500: #6d5ff2;
+  --color-primary-600: #5b43e6;
+  --color-primary-700: #4c35cb;
+  --color-primary-800: #3e2da4;
+  --color-primary-900: #2b2170;
+
+  --color-accent-50: #fff6ed;
+  --color-accent-100: #ffead4;
+  --color-accent-200: #ffd1a8;
+  --color-accent-300: #ffb070;
+  --color-accent-400: #ff8a3d;
+  --color-accent-500: #fb6c14;
+  --color-accent-600: #ec520a;
+  --color-accent-700: #c43c0b;
+  --color-accent-800: #9b3011;
+  --color-accent-900: #7d2a11;
+
+  /* Màu riêng cho trò chơi hóa */
+  --color-xp: #6d5ff2;
+  --color-coin: #f5b301;
+  --color-streak: #fb6c14;
+  --color-success: #16a34a;
+  --color-danger: #e11d48;
+
+  --color-ink: #1c1838;
+  --color-muted: #6b6889;
+  --color-surface: #f7f7fc;
+
+  --shadow-card: 0 1px 2px rgb(28 24 56 / 0.06), 0 8px 24px -12px rgb(28 24 56 / 0.18);
+}
+
+body {
+  @apply bg-surface text-ink font-sans antialiased;
+}
