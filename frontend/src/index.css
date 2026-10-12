@@ -43,3 +43,20 @@
 body {
   @apply bg-surface text-ink font-sans antialiased;
 }
+
+/* Kiểu chữ cho nội dung Markdown của bài học */
+.markdown {
+  @apply space-y-3 leading-relaxed;
+  & h1 { @apply text-2xl font-extrabold; }
+  & h2 { @apply text-xl font-bold; }
+  & h3 { @apply text-lg font-bold; }
+  & ul { @apply list-disc pl-6; }
+  & ol { @apply list-decimal pl-6; }
+  & a { @apply text-primary-600 underline; }
+  & blockquote { @apply border-l-4 border-primary-200 pl-4 text-muted; }
+  & :not(pre) > code { @apply rounded bg-primary-50 px-1.5 py-0.5 text-sm text-primary-800; }
+  & pre { @apply overflow-x-auto rounded-xl bg-ink p-4 text-sm text-white; }
+  & table { @apply w-full border-collapse text-sm; }
+  & th, & td { @apply border border-primary-100 px-3 py-2 text-left; }
+  & th { @apply bg-primary-50; }
+}

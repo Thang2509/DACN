@@ -1,0 +1,58 @@
+<?php
+
+// Chỉ dịch các quy tắc dự án đang dùng; quy tắc khác tự lấy bản tiếng Anh
+return [
+    'array' => ':Attribute phải là danh sách hợp lệ.',
+    'boolean' => ':Attribute phải là đúng hoặc sai.',
+    'confirmed' => 'Xác nhận :attribute không khớp.',
+    'current_password' => 'Mật khẩu hiện tại không đúng.',
+    'email' => ':Attribute không đúng định dạng email.',
+    'file' => ':Attribute phải là một tệp.',
+    'image' => ':Attribute phải là ảnh.',
+    'in' => ':Attribute không hợp lệ.',
+    'integer' => ':Attribute phải là số nguyên.',
+    'lowercase' => ':Attribute phải viết thường.',
+    'max' => [
+        'array' => ':Attribute không được quá :max mục.',
+        'file' => ':Attribute không được lớn hơn :max KB.',
+        'numeric' => ':Attribute không được lớn hơn :max.',
+        'string' => ':Attribute không được dài quá :max ký tự.',
+    ],
+    'mimes' => ':Attribute phải có định dạng: :values.',
+    'min' => [
+        'array' => ':Attribute cần ít nhất :min mục.',
+        'file' => ':Attribute phải lớn hơn :min KB.',
+        'numeric' => ':Attribute phải từ :min trở lên.',
+        'string' => ':Attribute phải có ít nhất :min ký tự.',
+    ],
+    'password' => [
+        'letters' => ':Attribute phải có ít nhất một chữ cái.',
+        'numbers' => ':Attribute phải có ít nhất một chữ số.',
+        'mixed' => ':Attribute phải có cả chữ hoa và chữ thường.',
+        'symbols' => ':Attribute phải có ít nhất một ký tự đặc biệt.',
+        'uncompromised' => ':Attribute đã bị lộ trong một vụ rò rỉ dữ liệu, hãy chọn mật khẩu khác.',
+    ],
+    'present' => 'Thiếu :attribute.',
+    'required' => 'Vui lòng nhập :attribute.',
+    'string' => ':Attribute phải là chuỗi ký tự.',
+    'unique' => ':Attribute đã được sử dụng.',
+    'url' => ':Attribute phải là đường dẫn hợp lệ.',
+
+    'attributes' => [
+        'name' => 'họ tên',
+        'email' => 'email',
+        'password' => 'mật khẩu',
+        'current_password' => 'mật khẩu hiện tại',
+        'bio' => 'giới thiệu',
+        'avatar' => 'ảnh đại diện',
+        'thumbnail' => 'ảnh bìa',
+        'title' => 'tiêu đề',
+        'summary' => 'mô tả ngắn',
+        'description' => 'mô tả',
+        'level' => 'cấp độ',
+        'price' => 'giá',
+        'role' => 'vai trò',
+        'note' => 'lý do',
+        'file' => 'tệp',
+    ],
+];

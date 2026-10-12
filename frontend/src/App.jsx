@@ -1,11 +1,18 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api } from './lib/api'
+import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import DesignPreview from './components/DesignPreview'
+import { Alert, Avatar, Button, Card } from './components/ui'
+import { AdminUsersPage, CourseReviewPage } from './features/admin/AdminPages'
+import { canTeach, isAdmin, logout, resendVerification, useUser } from './features/auth/api'
+import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyEmailPage } from './features/auth/AuthPages'
+import ProfilePage from './features/auth/ProfilePage'
+import CourseEditorPage from './features/courses/CourseEditorPage'
+import InstructorCoursesPage from './features/courses/InstructorCoursesPage'
 
-// Trang 3D tải riêng để three.js không làm chậm các trang khác
+// Trang nặng (three.js, markdown) tải riêng khi mở
 const PetPage = lazy(() => import('./features/pet/PetPage'))
+const LessonEditorPage = lazy(() => import('./features/lesson/LessonEditorPage'))
 
 export default function App() {
   return (
@@ -14,25 +21,61 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<DesignPreview />} />
           <Route path="/pet" element={<PetPage />} />
+
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/email/verify/:id/:hash" element={<VerifyEmailPage />} />
+
+          <Route element={<RequireUser />}>
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
+          <Route element={<RequireUser allow={canTeach} />}>
+            <Route path="/instructor" element={<InstructorCoursesPage />} />
+            <Route path="/instructor/courses/:courseId" element={<CourseEditorPage />} />
+            <Route path="/instructor/lessons/:lessonId" element={<LessonEditorPage />} />
+          </Route>
+          <Route element={<RequireUser allow={isAdmin} />}>
+            <Route path="/admin" element={<Navigate to="/admin/courses" replace />} />
+            <Route path="/admin/courses" element={<CourseReviewPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>
   )
 }
 
+// Chặn trang cần đăng nhập; allow(user) kiểm tra vai trò, trang theo vai trò cần đã xác thực email
+function RequireUser({ allow }) {
+  const { user, isLoading } = useUser()
+  const location = useLocation()
+
+  if (isLoading) return <p className="text-muted">Đang tải…</p>
+  if (!user) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
+  if (allow && !allow(user)) return <Card className="text-center">Bạn không có quyền truy cập trang này.</Card>
+  if (allow && !user.email_verified_at) return <Card className="text-center">Hãy xác thực email trước khi dùng chức năng này.</Card>
+  return <Outlet />
+}
+
 function Layout() {
+  const { user } = useUser()
+
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-primary-100 bg-white/90 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <span className="text-xl font-extrabold text-primary-700">
+      <header className="sticky top-0 z-20 border-b border-primary-100 bg-white/90 backdrop-blur">
+        <nav className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
+          <Link to="/" className="text-xl font-extrabold text-primary-700">
             Edu<span className="text-accent-500">Quest</span>
-          </span>
-          <NavItem to="/">Design system</NavItem>
+          </Link>
           <NavItem to="/pet">Thú cưng</NavItem>
-          <ApiStatus />
+          {canTeach(user) && <NavItem to="/instructor">Giảng dạy</NavItem>}
+          {isAdmin(user) && <NavItem to="/admin">Quản trị</NavItem>}
+          <div className="ml-auto">{user ? <UserMenu user={user} /> : <GuestButtons />}</div>
         </nav>
       </header>
+      {user && !user.email_verified_at && <VerifyBanner />}
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Suspense fallback={<p className="text-muted">Đang tải…</p>}>
           <Outlet />
@@ -46,24 +89,55 @@ function NavItem({ to, children }) {
   return (
     <NavLink
       to={to}
-      end
-      className={({ isActive }) =>
-        `font-semibold ${isActive ? 'text-primary-700' : 'text-muted hover:text-primary-600'}`
-      }
+      className={({ isActive }) => `font-semibold ${isActive ? 'text-primary-700' : 'text-muted hover:text-primary-600'}`}
     >
       {children}
     </NavLink>
   )
 }
 
-// Hiển thị backend Laravel đã kết nối hay chưa
-function ApiStatus() {
-  const { isSuccess, isLoading } = useQuery({ queryKey: ['ping'], queryFn: () => api('/ping') })
-  const text = isLoading ? 'Đang kết nối…' : isSuccess ? 'API đã kết nối' : 'Chưa chạy backend'
+function GuestButtons() {
   return (
-    <span className="ml-auto flex items-center gap-2 text-sm text-muted">
-      <span className={`size-2 rounded-full ${isSuccess ? 'bg-success' : 'bg-danger'}`} />
-      {text}
-    </span>
+    <div className="flex gap-2">
+      <Link to="/login"><Button size="sm" variant="ghost">Đăng nhập</Button></Link>
+      <Link to="/register"><Button size="sm">Đăng ký</Button></Link>
+    </div>
+  )
+}
+
+function UserMenu({ user }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.clear() // xóa dữ liệu của người dùng cũ
+      queryClient.setQueryData(['me'], null)
+      navigate('/')
+    },
+  })
+
+  return (
+    <div className="flex items-center gap-3">
+      <Link to="/profile" className="flex items-center gap-2 font-semibold">
+        <Avatar user={user} />
+        <span className="hidden sm:inline">{user.name}</span>
+      </Link>
+      <Button size="sm" variant="ghost" onClick={() => mutation.mutate()}>Đăng xuất</Button>
+    </div>
+  )
+}
+
+function VerifyBanner() {
+  const mutation = useMutation({ mutationFn: resendVerification })
+  return (
+    <div className="mx-auto max-w-6xl px-4 pt-4">
+      <Alert tone="warning" className="flex flex-wrap items-center gap-3">
+        <span>Email của bạn chưa được xác thực. Hãy mở link trong hộp thư để dùng đầy đủ tính năng.</span>
+        <button className="font-bold underline" onClick={() => mutation.mutate()} disabled={mutation.isPending || mutation.isSuccess}>
+          {mutation.isSuccess ? 'Đã gửi lại' : 'Gửi lại email xác thực'}
+        </button>
+      </Alert>
+    </div>
   )
 }

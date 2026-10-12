@@ -6,29 +6,41 @@ function getCookie(name) {
 }
 
 export async function api(path, { method = 'GET', body } = {}) {
+  // Request thay đổi dữ liệu cần cookie XSRF-TOKEN; lần đầu thì xin Laravel cấp
+  if (method !== 'GET' && !getCookie('XSRF-TOKEN')) {
+    await fetch('/sanctum/csrf-cookie', { credentials: 'include' })
+  }
+
+  const isForm = body instanceof FormData
   const res = await fetch(`/api${path}`, {
     method,
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      'Content-Type': 'application/json',
-      // Sanctum kiểm tra CSRF bằng header này với các request thay đổi dữ liệu
+      ...(isForm ? {} : { 'Content-Type': 'application/json' }),
       'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: isForm ? body : body ? JSON.stringify(body) : undefined,
   })
 
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const error = new Error(data?.message || res.statusText)
     error.status = res.status
-    error.errors = data?.errors // lỗi kiểm tra dữ liệu từ Form Request
+    error.errors = data?.errors // lỗi kiểm tra dữ liệu (422) theo từng trường
     throw error
   }
   return data
 }
 
-// Gọi một lần trước khi đăng nhập/đăng ký để Laravel đặt cookie XSRF-TOKEN
-export function getCsrfCookie() {
-  return fetch('/sanctum/csrf-cookie', { credentials: 'include' })
+// Gói một tệp vào FormData để tải lên
+export function toFormData(field, file) {
+  const form = new FormData()
+  form.append(field, file)
+  return form
+}
+
+// Lỗi đầu tiên của một trường trong lỗi 422, vd fieldError(error, 'email')
+export function fieldError(error, field) {
+  return error?.errors?.[field]?.[0]
 }

@@ -71,16 +71,68 @@ export function ProgressBar({ value, max = 100, color = 'primary', label }) {
   )
 }
 
-export function Input({ label, error, className = '', ...props }) {
+const FIELD_CLASS = 'w-full rounded-xl border-2 bg-white px-4 py-2.5 outline-none transition focus:border-primary-500'
+
+// Khung chung cho ô nhập: nhãn ở trên, lỗi ở dưới; w-full để ô giãn hết chỗ trống khi nằm trong hàng flex
+function Field({ label, error, children }) {
   return (
-    <label className="block">
+    <label className="block w-full">
       {label && <span className="mb-1 block text-sm font-semibold">{label}</span>}
-      <input
-        className={`w-full rounded-xl border-2 bg-white px-4 py-2.5 outline-none transition focus:border-primary-500
-          ${error ? 'border-danger' : 'border-primary-100'} ${className}`}
-        {...props}
-      />
+      {children}
       {error && <span className="mt-1 block text-sm text-danger">{error}</span>}
     </label>
   )
+}
+
+export function Input({ label, error, className = '', ...props }) {
+  return (
+    <Field label={label} error={error}>
+      <input className={`${FIELD_CLASS} ${error ? 'border-danger' : 'border-primary-100'} ${className}`} {...props} />
+    </Field>
+  )
+}
+
+export function Textarea({ label, error, className = '', ...props }) {
+  return (
+    <Field label={label} error={error}>
+      <textarea
+        rows={4}
+        className={`${FIELD_CLASS} ${error ? 'border-danger' : 'border-primary-100'} ${className}`}
+        {...props}
+      />
+    </Field>
+  )
+}
+
+export function Select({ label, error, options, className = '', ...props }) {
+  return (
+    <Field label={label} error={error}>
+      <select className={`${FIELD_CLASS} ${error ? 'border-danger' : 'border-primary-100'} ${className}`} {...props}>
+        {Object.entries(options).map(([value, text]) => (
+          <option key={value} value={value}>{text}</option>
+        ))}
+      </select>
+    </Field>
+  )
+}
+
+// Ảnh đại diện, chưa có ảnh thì hiện chữ cái đầu của tên
+export function Avatar({ user, size = 'size-9' }) {
+  if (user.avatar_url) return <img src={user.avatar_url} alt="" className={`${size} rounded-full object-cover`} />
+  return (
+    <span className={`${size} grid shrink-0 place-items-center rounded-full bg-primary-500 font-bold text-white`}>
+      {user.name.charAt(0).toUpperCase()}
+    </span>
+  )
+}
+
+const ALERT_TONES = {
+  info: 'bg-primary-50 text-primary-800 border-primary-200',
+  success: 'bg-green-50 text-green-800 border-green-200',
+  warning: 'bg-amber-50 text-amber-800 border-amber-200',
+  danger: 'bg-rose-50 text-rose-800 border-rose-200',
+}
+
+export function Alert({ tone = 'info', className = '', ...props }) {
+  return <div className={`rounded-xl border-2 px-4 py-3 text-sm ${ALERT_TONES[tone]} ${className}`} {...props} />
 }

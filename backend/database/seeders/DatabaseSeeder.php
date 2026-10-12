@@ -3,21 +3,17 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
+    // Tài khoản demo, mật khẩu đều là "password"
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::factory()->admin()->create(['name' => 'Quản trị viên', 'email' => 'admin@eduquest.test']);
+        $instructor = User::factory()->instructor()->create(['name' => 'Giảng viên Demo', 'email' => 'giangvien@eduquest.test']);
+        User::factory()->create(['name' => 'Học viên Demo', 'email' => 'hocvien@eduquest.test']);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $this->callWith(DemoCourseSeeder::class, ['instructor' => $instructor]);
     }
 }

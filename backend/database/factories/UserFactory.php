@@ -32,6 +32,16 @@ class UserFactory extends Factory
         ];
     }
 
+    public function instructor(): static
+    {
+        return $this->state(fn () => ['role' => 'instructor']);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn () => ['role' => 'admin']);
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */

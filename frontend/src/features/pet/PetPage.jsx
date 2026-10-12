@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Center, ContactShadows, OrbitControls, Resize } from '@react-three/drei'
+import { ContactShadows, OrbitControls } from '@react-three/drei'
 import { Button, Card } from '../../components/ui'
 import PetModel from './PetModel'
 import { PET_STATES } from './petStates'
@@ -16,7 +16,7 @@ export default function PetPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
       <Card className="h-[480px] overflow-hidden bg-gradient-to-b from-primary-100 via-primary-50 to-accent-50 p-0">
-        <Canvas camera={{ position: [2.2, 1.3, 2.8], fov: 35 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [2.3, 1.6, 3.2], fov: 35 }} dpr={[1, 2]}>
           <PetScene state={state} onFinished={handleFinished} />
         </Canvas>
       </Card>
@@ -51,23 +51,18 @@ function PetScene({ state, onFinished }) {
       <directionalLight position={[3, 5, 4]} intensity={1.6} color="#fff4e6" />
 
       <Suspense fallback={null}>
-        {/* Quy mô hình về cao 1 đơn vị và đặt chân chạm sàn */}
-        <Center bottom>
-          <Resize height>
-            <PetModel state={state} onFinished={onFinished} />
-          </Resize>
-        </Center>
+        <PetModel state={state} onFinished={onFinished} />
       </Suspense>
 
       {/* Bục tròn low-poly */}
       <mesh position-y={-0.08}>
-        <cylinderGeometry args={[1.3, 1.4, 0.16, 18]} />
+        <cylinderGeometry args={[1, 1.08, 0.16, 18]} />
         <meshStandardMaterial color="#c6caff" flatShading />
       </mesh>
-      <ContactShadows position-y={0.001} scale={3} blur={2.4} opacity={0.45} far={1.5} />
+      <ContactShadows position-y={0.001} scale={2.4} blur={2.4} opacity={0.45} far={1.5} />
 
       <OrbitControls
-        target={[0, 0.45, 0]}
+        target={[0, 0.4, 0]}
         enablePan={false}
         minDistance={1.8}
         maxDistance={5}
