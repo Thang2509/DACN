@@ -9,8 +9,8 @@ const hamster = { ...dog, kind: 'hamster', gait: 'trot', size: 0.15, legs: 0.03,
 const hedgehog = { ...hamster, kind: 'hedgehog', size: 0.14 }
 
 describe('PET_STATES', () => {
-  it('có đủ 8 trạng thái theo yêu cầu', () => {
-    expect(Object.keys(PET_STATES)).toEqual(['idle', 'walk', 'run', 'jump', 'eat', 'sleep', 'happy', 'sad'])
+  it('có đủ 9 trạng thái (8 theo yêu cầu + chơi đồ chơi trong phòng)', () => {
+    expect(Object.keys(PET_STATES)).toEqual(['idle', 'walk', 'run', 'jump', 'eat', 'sleep', 'happy', 'sad', 'play'])
   })
 
   it('trạng thái kế tiếp và trạng thái theo tâm trạng luôn hợp lệ', () => {
@@ -142,6 +142,6 @@ describe('trộn và lò xo', () => {
 it('mọi vật phẩm trong cửa hàng đều có biểu tượng', () => {
   const codes = ['cookie', 'apple', 'fish', 'cake', 'flower', 'party_hat', 'crown', 'scarf', 'bow_tie', 'bell_collar', 'backpack', 'wings',
     'food_bowl', 'pet_bed', 'rug_round', 'rug_rectangle', 'plant_small', 'plant_large', 'cardboard_box', 'teddy_bear', 'floor_lamp', 'bookcase',
-    'armchair', 'coffee_table', 'sofa']
+    'armchair', 'coffee_table', 'sofa', 'scratching_post', 'hamster_wheel', 'pet_tunnel']
   for (const code of codes) expect(ITEM_ICONS).toHaveProperty(code)
 })

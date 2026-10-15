@@ -9,6 +9,7 @@ export const PET_STATES = {
   sleep: { label: 'Ngủ' },
   happy: { label: 'Vui' },
   sad: { label: 'Buồn' },
+  play: { label: 'Chơi' },
 }
 
 /**
@@ -63,6 +64,9 @@ export const ITEM_ICONS = {
   plant_small: '🪴',
   plant_large: '🌿',
   cardboard_box: '📦',
+  scratching_post: '🪵',
+  hamster_wheel: '🎡',
+  pet_tunnel: '🌀',
   teddy_bear: '🧸',
   floor_lamp: '💡',
   bookcase: '📚',

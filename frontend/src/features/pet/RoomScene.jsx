@@ -7,16 +7,18 @@ import { daylight } from './daylight'
 import Effects from './Effects'
 import Furniture from './Furniture'
 import PetBody from './PetBody'
-import { petBoost, petSize } from './anatomy'
+import { BREEDS, petBoost, petSize } from './anatomy'
 import { Egg, RealisticLight } from './PetScene'
 import { MOODS, PET_STATES, SPECIES, STAGES } from './petStates'
 import {
+  ACTIVITIES,
   BALL_RADIUS,
   besideCell,
   canPlace,
   CELL,
   cellAt,
   cellCenter,
+  cellsOf,
   findPath,
   footprint,
   freeCells,
@@ -24,14 +26,20 @@ import {
   occupancy,
   stepBall,
   throwVelocity,
+  tunnelEnds,
 } from './room'
 
 const SIZE = GRID * CELL // sàn 4 × 4 đơn vị
 const PET_HEIGHT = 0.55 // thú trưởng thành cao khoảng bằng cái ghế sofa
 const BED_HEIGHT = 0.06
+const SEAT_HEIGHT = 0.27 // mặt đệm sofa, ghế bành
+const WHEEL_FLOOR = 0.035 // đáy bánh xe chạy
+const BOX_WALL = 0.26 // thành hộp giấy cao; thú ngồi trong hộp được đặt sao cho chỉ ló đầu lên trên miệng hộp
 const CAMERA = [4.4, 4.2, 4.4]
 const CLOSE_CAMERA = [0.55, 0.48, 0.68] // hướng nhìn gần (trang Thú cưng), độ xa nhân theo cỡ thú
-const TOYS = ['teddy_bear', 'cardboard_box']
+// Món đồ → nhóm chỗ chơi (xem ACTIVITIES trong room.js)
+const SPOT_OF = { teddy_bear: 'toys', cardboard_box: 'boxes', sofa: 'seats', armchair: 'seats', scratching_post: 'posts' }
+const SPOT_LIST = { toy: 'toys', box: 'boxes', seat: 'seats', post: 'posts', wheel: 'wheels', tunnel: 'tunnels' }
 
 /**
  * Cảnh 3D phòng thú cưng, dựng hoàn toàn bằng code.
@@ -57,7 +65,8 @@ export default function RoomScene({
   const hour = useHour()
   const light = daylight(hour)
   const blocked = useMemo(() => occupancy(layout, itemsById).object, [layout, itemsById])
-  const spots = useMemo(() => findSpots(layout, itemsById), [layout, itemsById])
+  const spots = useMemo(() => findSpots(layout, itemsById, blocked), [layout, itemsById, blocked])
+  const [activeItem, setActiveItem] = useState(null) // ô của món đang được thú dùng (bánh xe quay)
   const ballRef = useRef(null)
   const petRef = useRef()
   const [ballThrown, setBallThrown] = useState(false)
@@ -105,6 +114,7 @@ export default function RoomScene({
               item={itemsById[placement.pet_item_id]}
               placement={placement}
               night={light.night}
+              active={activeItem === `${placement.x},${placement.z}`}
               onClick={onItemClick && (() => onItemClick(index))}
             />
           ),
@@ -122,6 +132,7 @@ export default function RoomScene({
             command={command}
             celebrate={celebrate}
             hatching={hatching}
+            onUse={setActiveItem}
           />
         )}
         {ballThrown && <Ball ballRef={ballRef} blocked={blocked} />}
@@ -177,16 +188,27 @@ function useHour() {
   return hour
 }
 
-// Chỗ thú tương tác: bát ăn, ổ nằm, đồ chơi (ô đặt của món đầu tiên mỗi loại)
-function findSpots(layout, itemsById) {
-  const spots = { bowl: null, bed: null, toys: [] }
+/**
+ * Chỗ thú tương tác: bát ăn, ổ nằm (món đầu tiên mỗi loại), gấu bông, hộp giấy, chỗ ngồi sofa / ghế bành (từng ô),
+ * trụ cào, bánh xe (kèm hướng chạy), ống chui (các ô của ống + hai đầu). seatKeys, wheelKeys: tra nhanh độ cao theo ô.
+ */
+function findSpots(layout, itemsById, blocked) {
+  const spots = { bowl: null, bed: null, toys: [], boxes: [], seats: [], posts: [], wheels: [], tunnels: [] }
   for (const placement of layout) {
-    const code = itemsById[placement.pet_item_id]?.code
+    const item = itemsById[placement.pet_item_id]
+    if (!item) continue
     const cell = [placement.x, placement.z]
-    if (code === 'food_bowl') spots.bowl ??= cell
-    if (code === 'pet_bed') spots.bed ??= cell
-    if (TOYS.includes(code)) spots.toys.push(cell)
+    const cells = cellsOf(placement, item).map((key) => key.split(',').map(Number))
+    if (item.code === 'food_bowl') spots.bowl ??= cell
+    else if (item.code === 'pet_bed') spots.bed ??= cell
+    else if (item.code === 'hamster_wheel') spots.wheels.push({ cell, key: cell.join(','), face: (placement.rotation * Math.PI) / 2 })
+    else if (item.code === 'pet_tunnel') {
+      const ends = tunnelEnds(blocked, placement, item)
+      if (ends) spots.tunnels.push({ cells, ends })
+    } else if (SPOT_OF[item.code]) spots[SPOT_OF[item.code]].push(...(item.code === 'sofa' ? cells : [cell]))
   }
+  spots.seatKeys = new Set(spots.seats.map((cell) => cell.join(',')))
+  spots.wheelKeys = new Set(spots.wheels.map((wheel) => wheel.key))
   return spots
 }
 
@@ -292,7 +314,7 @@ function Floor({ onHover, onClick, showGrid }) {
   )
 }
 
-function PlacedItem({ item, placement, night, onClick }) {
+function PlacedItem({ item, placement, night, active = false, onClick }) {
   const [width, depth] = footprint(item, placement.rotation)
   const [x, z] = cellCenter(placement.x, placement.z, width, depth)
 
@@ -309,7 +331,7 @@ function PlacedItem({ item, placement, night, onClick }) {
         })
       }
     >
-      <Furniture code={item.code} night={night} />
+      <Furniture code={item.code} night={night} active={active} />
     </group>
   )
 }
@@ -364,15 +386,17 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)]
  * → được vuốt ve → đuổi bóng, ngậm về trước mặt người chơi → rảnh thì đi dạo, ghé chơi đồ chơi.
  * Vị trí cập nhật mỗi khung hình qua ref; chỉ đổi state khi đổi tư thế (để đổi hoạt ảnh, hiệu ứng).
  */
-function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, hatching }) {
+function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, hatching, onUse }) {
   const inner = useRef()
   const [pose, setPose] = useState('idle')
   const [hearts, setHearts] = useState(0)
   const [start] = useState(() => cellCenter(...startCell(blocked)))
   const species = SPECIES[pet.species.code] ? pet.species.code : 'shiba'
+  const kind = BREEDS[species].kind
   const scale = STAGES[pet.stage].scale
   // Thú nhỏ (thỏ, hamster, nhím) phóng nhẹ cho dễ thấy, vẫn nhỏ hơn chó
   const height = PET_HEIGHT * scale * petBoost(species, 0.5)
+  const tall = height * petSize(species) * 1.45 // chiều cao tới đỉnh đầu (đơn vị cảnh)
   // Tốc độ theo cỡ thú thật (đơn vị cảnh/giây): con nhỏ đi chậm, bước chân khớp quãng đường
   const WALK_SPEED = (0.15 + height * 1.05) * Math.sqrt(petSize(species) / 0.5)
   const RUN_SPEED = WALK_SPEED * 2.2
@@ -403,12 +427,12 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
       b.until = now + seconds
       setPose(nextPose)
     }
-    // Đi tới ô đích theo đường ngắn nhất; through: ô có đồ nhưng cho phép bước lên (ổ nằm)
+    // Đi tới ô đích theo đường ngắn nhất; through: ô (hoặc danh sách ô) có đồ nhưng được bước vào (ổ, sofa, hộp, ống chui)
     const goTo = (cell, mode, speed, arrive, through = null) => {
       let walls = blocked
       if (through) {
         walls = new Set(blocked)
-        walls.delete(through.join(','))
+        for (const open of Array.isArray(through[0]) ? through : [through]) walls.delete(open.join(','))
       }
       const path = sameCell(here, cell) ? [] : findPath(walls, here, cell)
       b.mode = mode
@@ -423,6 +447,40 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
     const eat = () => {
       if (spots.bowl) faceTowards(...cellCenter(...spots.bowl))
       act('eat', 'eat', 3.5)
+    }
+    const faceCamera = () => faceTowards(CAMERA[0], CAMERA[2])
+    // Lúc rảnh tự tìm trò chơi hợp với loài và có món trong phòng; trả về false nếu không có gì để chơi
+    const startActivity = () => {
+      const choices = ACTIVITIES[kind].filter((name) => spots[SPOT_LIST[name]].length)
+      if (!choices.length) return false
+      const name = pick(choices)
+      const target = pick(spots[SPOT_LIST[name]])
+      if (name === 'toy' || name === 'post') {
+        const spot = besideCell(blocked, target, here)
+        if (!spot) return false
+        goTo(spot, 'walk', WALK_SPEED, () => {
+          faceTowards(...cellCenter(...target))
+          act('play', 'play', name === 'post' ? 3.5 : 2.5)
+        })
+      } else if (name === 'box') {
+        goTo(target, 'toBox', WALK_SPEED, () => {
+          faceCamera()
+          act('hide', 'idle', 6 + Math.random() * 4)
+        }, target)
+      } else if (name === 'seat') {
+        goTo(target, 'toSeat', WALK_SPEED, () => act('nap', 'sleep', 8 + Math.random() * 5), target)
+      } else if (name === 'wheel') {
+        goTo(target.cell, 'toWheel', WALK_SPEED, () => {
+          b.face = target.face
+          b.wheelKey = target.key
+          act('wheel', 'run', 6 + Math.random() * 3)
+        }, target.cell)
+      } else {
+        // Ống chui: tới đầu gần hơn rồi chui qua sang đầu kia
+        const [near, far] = [...target.ends].sort((a, c) => Math.hypot(a[0] - here[0], a[1] - here[1]) - Math.hypot(c[0] - here[0], c[1] - here[1]))
+        goTo(near, 'walk', WALK_SPEED, () => goTo(far, 'tunnel', WALK_SPEED * 0.8, null, target.cells))
+      }
+      return true
     }
 
     // 1) Ngủ: về ổ nằm (nếu có) rồi nằm; thức dậy thì về trạng thái rảnh
@@ -456,7 +514,7 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
     }
 
     // 3) Bóng: chạy tới khi bóng đã chạm sàn, ngậm lên, mang về ô gần người chơi rồi thả xuống
-    const busy = ['sleep', 'toBed', 'eat', 'toBowl', 'trick', 'zoomies'].includes(b.mode)
+    const busy = ['sleep', 'toBed', 'eat', 'toBowl', 'trick', 'zoomies', 'nap', 'hide', 'wheel', 'tunnel'].includes(b.mode)
     if (ballState && !busy) {
       if (b.mode === 'carry') {
         const reach = height * 0.45
@@ -517,7 +575,7 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
         body.position.x += (dx / distance) * step
         body.position.z += (dz / distance) * step
       }
-    } else if (['eat', 'trick', 'play', 'petted'].includes(b.mode) && now > b.until) {
+    } else if (['eat', 'trick', 'play', 'petted', 'hide', 'nap', 'wheel'].includes(b.mode) && now > b.until) {
       act('idle', moodPose)
       b.wait = 1.5
     } else if (b.mode === 'idle') {
@@ -526,14 +584,7 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
       b.wait -= delta
       if (b.wait <= 0) {
         b.wait = 2 + Math.random() * 3
-        const toy = spots.toys.length && Math.random() < 0.3 ? pick(spots.toys) : null
-        const spot = toy && besideCell(blocked, toy, here)
-        if (spot) {
-          goTo(spot, 'walk', WALK_SPEED, () => {
-            faceTowards(...cellCenter(...toy))
-            act('play', 'happy', 1.6)
-          })
-        } else {
+        if (!(Math.random() < 0.45 && startActivity())) {
           const target = pick(freeCells(blocked))
           if (target) goTo(target, 'walk', WALK_SPEED, null)
         }
@@ -545,7 +596,25 @@ function PetActor({ pet, petRef, blocked, spots, ballRef, command, celebrate, ha
       const turn = MathUtils.euclideanModulo(b.face - body.rotation.y + Math.PI, Math.PI * 2) - Math.PI
       body.rotation.y += turn * Math.min(1, delta * 8)
     }
-    body.position.y = MathUtils.lerp(body.position.y, sameCell(here, spots.bed) ? BED_HEIGHT : 0, Math.min(1, delta * 6))
+    // Độ cao theo chỗ đứng: trên ổ, trên đệm sofa / ghế, trong bánh xe, ngồi thụt trong hộp giấy
+    const cellKey = here.join(',')
+    const level = sameCell(here, spots.bed)
+      ? BED_HEIGHT
+      : spots.seatKeys.has(cellKey)
+        ? SEAT_HEIGHT
+        : b.mode === 'hide'
+          ? BOX_WALL - tall * 0.75
+          : spots.wheelKeys.has(cellKey)
+            ? WHEEL_FLOOR
+            : 0
+    body.position.y = MathUtils.lerp(body.position.y, level, Math.min(1, delta * 6))
+
+    // Báo cho cảnh biết bánh xe nào đang có thú chạy (để bánh xe quay)
+    const usingWheel = b.mode === 'wheel' ? b.wheelKey : null
+    if (usingWheel !== b.usingWheel) {
+      b.usingWheel = usingWheel
+      onUse?.(usingWheel)
+    }
   })
 
   // Vuốt ve: vẫy đuôi, nhìn về phía người chơi, bắn chùm tim

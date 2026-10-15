@@ -94,6 +94,30 @@ export function besideCell(blocked, cell, from) {
   return around[0] ?? null
 }
 
+/**
+ * Hoạt động tự chọn lúc rảnh theo loài: toy vờn gấu bông, box chui hộp giấy, seat nằm sofa / ghế bành,
+ * post cào trụ, wheel chạy bánh xe, tunnel chui ống (thú to như chó, capybara không vừa hộp, ống, bánh xe).
+ */
+export const ACTIVITIES = {
+  dog: ['toy', 'seat'],
+  cat: ['toy', 'box', 'seat', 'post', 'tunnel'],
+  capybara: ['toy'],
+  rabbit: ['toy', 'box', 'tunnel'],
+  hamster: ['box', 'wheel', 'tunnel'],
+  hedgehog: ['box', 'wheel', 'tunnel'],
+}
+
+// Hai ô đứng ở hai đầu ống chui (theo chiều dài ống); null nếu một đầu ra ngoài sàn hoặc bị đồ chặn
+export function tunnelEnds(blocked, placement, item) {
+  const [width, depth] = footprint(item, placement.rotation)
+  const [dx, dz] = width >= depth ? [1, 0] : [0, 1]
+  const length = Math.max(width, depth)
+  const start = [placement.x - dx, placement.z - dz]
+  const end = [placement.x + dx * length, placement.z + dz * length]
+  const open = ([x, z]) => x >= 0 && z >= 0 && x < GRID && z < GRID && !blocked.has(`${x},${z}`)
+  return open(start) && open(end) ? [start, end] : null
+}
+
 // ---- Quả bóng: tự xử lý rơi, nảy, lăn và va chạm (không dùng thư viện vật lý) ----
 export const BALL_RADIUS = 0.06
 const GRAVITY = 6

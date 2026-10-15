@@ -86,7 +86,7 @@ eduquest/
 - Hoạt ảnh tính bằng code (`petMotion.js`): đứng, đi, chạy, nhảy, ăn, ngủ, vui, buồn; kiểu di chuyển theo loài: đi 4 nhịp / phi nước đại (chó, mèo, capybara), thỏ nhảy, hamster và nhím chạy lon ton; đổi trạng thái trộn chéo mượt, thân uốn khi rẽ; cử chỉ lúc rảnh (ngồi, ngáp, gãi tai, đánh hơi, rũ lông, liếm lông, đứng ngó); đuôi, tai lắc theo lò xo.
 - Vòng đời: trứng (nở ngay khi nhận) → mới nở → con non → trưởng thành → tiến hóa. Chỉ số no, vui, năng lượng tăng khi học.
 - 8 loài: khởi đầu Shiba, Thỏ, Mèo mướp; mua thêm Corgi, Mèo Ba Tư, Capybara, Hamster, Nhím. Trang bị gắn vào điểm neo đầu / cổ / lưng.
-- Phòng 3D dựng bằng code: thú tự đi lại tránh đồ, ăn ở bát, ngủ trên ổ, nhặt bóng, được vuốt ve; ánh sáng ngày/đêm theo giờ thật; hiệu ứng cảm xúc. 2 minigame (tự xử lý va chạm) trong cảnh thiên nhiên hoạt hình dựng bằng code (`Nature.jsx`).
+- Phòng 3D dựng bằng code: thú tự đi lại tránh đồ, ăn ở bát, ngủ trên ổ, nhặt bóng, được vuốt ve; lúc rảnh tự chơi theo loài (mèo cào trụ, nằm sofa; thỏ, hamster, nhím chui hộp, chui ống; hamster, nhím chạy bánh xe); ánh sáng ngày/đêm theo giờ thật; hiệu ứng cảm xúc. 2 minigame (tự xử lý va chạm) trong cảnh thiên nhiên hoạt hình dựng bằng code (`Nature.jsx`).
 
 ## Tiến độ (theo đề cương)
 

@@ -6,11 +6,19 @@ const PetGallery = lazy(() => import('../features/pet/PetScene').then((module) =
 
 // Trang xem nhanh design system (màu, chữ, component) trong lúc phát triển
 const SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
+// Bộ đồ mặc thử để kiểm tra điểm neo đầu / cổ / lưng trên mọi loài
+const OUTFITS = {
+  'Không đồ': [],
+  'Mũ + khăn + balo': [{ slot: 'head', code: 'party_hat' }, { slot: 'neck', code: 'scarf' }, { slot: 'back', code: 'backpack' }],
+  'Vương miện + chuông + cánh': [{ slot: 'head', code: 'crown' }, { slot: 'neck', code: 'bell_collar' }, { slot: 'back', code: 'wings' }],
+  'Hoa + nơ': [{ slot: 'head', code: 'flower' }, { slot: 'neck', code: 'bow_tie' }],
+}
 const GAME_COLORS = ['xp', 'coin', 'streak', 'success', 'danger', 'ink', 'muted']
 
 export default function DesignPreview() {
   const [petState, setPetState] = useState('idle')
   const [petFocus, setPetFocus] = useState(null)
+  const [outfit, setOutfit] = useState('Không đồ')
 
   return (
     <div className="space-y-8">
@@ -34,9 +42,14 @@ export default function DesignPreview() {
             </Button>
           ))}
         </div>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(OUTFITS).map((name) => (
+            <Button key={name} size="sm" variant={outfit === name ? 'primary' : 'ghost'} onClick={() => setOutfit(name)}>{name}</Button>
+          ))}
+        </div>
         <div className="h-96 overflow-hidden rounded-2xl">
           <Suspense fallback={<Skeleton className="h-96" />}>
-            <PetGallery state={petState} focus={petFocus} />
+            <PetGallery state={petState} focus={petFocus} equipment={OUTFITS[outfit]} />
           </Suspense>
         </div>
       </Section>

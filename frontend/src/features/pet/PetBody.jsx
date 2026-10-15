@@ -237,18 +237,21 @@ function createRig(body, look, furLayers) {
   attach('head', new Mesh(keep(whiskerGeometry(head, mw, traits.whiskers, round)), keep(new MeshStandardMaterial({ color: tone(round ? '#f4f1ea' : '#2b2420'), roughness: 0.5 }))), new Vector3())
 
   // Điểm neo trang bị (khung đơn vị như Accessories.jsx mô tả)
+  // Đồ nằm trên lớp lông / gai (nhím gai dài nên mũ, balo phải nâng lên); thú gần như không có cổ (hamster, nhím)
+  // thì khăn, vòng cổ giới hạn theo cỡ đầu để không trùm cả thân
   const hw = breed.head.width
+  const furTop = Math.max(breed.fur.length, (breed.spines?.length ?? 0) * 0.7)
   const anchors = {
-    head: attach('head', new Object3D(), new Vector3(...head.skull).add(new Vector3(0, hw * 0.95, -breed.head.length * 0.15))),
+    head: attach('head', new Object3D(), new Vector3(...head.skull).add(new Vector3(0, hw * 0.95 + furTop * 0.6, -breed.head.length * 0.15))),
     neck: attach('neck1', new Object3D(), new Vector3(...joints.neckMid)),
-    back: attach('chest', new Object3D(), new Vector3(0, breed.withers + 0.01, joints.chest[2] - breed.length * 0.25)),
+    back: attach('chest', new Object3D(), new Vector3(0, breed.withers + 0.01 + furTop * 0.8, joints.chest[2] - breed.length * 0.25)),
   }
-  anchors.head.scale.setScalar(hw * 2)
+  anchors.head.scale.setScalar((hw + furTop * 0.4) * 2)
   anchors.back.scale.setScalar(breed.chestWidth * 2)
   const neckAxis = new Vector3(...joints.head).sub(new Vector3(...joints.neckBase)).normalize()
   const throat = new Vector3(0, 0, 1).addScaledVector(neckAxis, -neckAxis.z).normalize()
   anchors.neck.quaternion.setFromRotationMatrix(new Matrix4().makeBasis(new Vector3().crossVectors(throat, neckAxis), throat, neckAxis))
-  anchors.neck.scale.setScalar(breed.neck.thickness * 1.3)
+  anchors.neck.scale.setScalar(Math.min(breed.neck.thickness * 1.05 + breed.fur.length * 0.9, hw * 1.6))
 
   // Khối bao vô hình để bấm vào thú
   const hitbox = new Mesh(keep(new SphereGeometry(1, 12, 8)), keep(new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })))

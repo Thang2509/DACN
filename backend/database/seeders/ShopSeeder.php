@@ -53,6 +53,9 @@ class ShopSeeder extends Seeder
             ['armchair', 'Ghế bành', 120, 1, 1, false],
             ['coffee_table', 'Bàn trà', 150, 2, 1, false],
             ['sofa', 'Ghế sofa', 200, 2, 1, false],
+            ['scratching_post', 'Trụ cào móng', 90, 1, 1, false],
+            ['hamster_wheel', 'Bánh xe chạy', 120, 1, 1, false],
+            ['pet_tunnel', 'Ống chui', 100, 2, 1, false],
         ] as [$code, $name, $price, $sizeX, $sizeZ, $floor]) {
             PetItem::create([
                 'code' => $code, 'name' => $name, 'type' => 'furniture', 'price' => $price,

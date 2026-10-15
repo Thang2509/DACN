@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BALL_RADIUS, ballResting, besideCell, canPlace, cellAt, cellCenter, findPath, footprint, freeCells, occupancy, stepBall, throwVelocity } from './room'
+import { ACTIVITIES, BALL_RADIUS, ballResting, besideCell, canPlace, cellAt, cellCenter, findPath, footprint, freeCells, occupancy, stepBall, throwVelocity, tunnelEnds } from './room'
 
 const items = {
   1: { size_x: 2, size_z: 1 }, // sofa
@@ -107,5 +107,25 @@ describe('quả bóng', () => {
     const [x, z] = cellCenter(4, 4)
     const ball = simulate({ x, y: BALL_RADIUS, z, vx: 2, vy: 0, vz: 0 }, sofa, 1)
     expect(cellAt(ball.x, ball.z)).not.toEqual([5, 4])
+  })
+})
+
+describe('đồ chơi trong phòng', () => {
+  const tunnel = { size_x: 2, size_z: 1 }
+
+  it('ống chui: hai ô đứng ở hai đầu theo chiều dài ống, kể cả khi xoay', () => {
+    expect(tunnelEnds(new Set(), place(1, 3, 2), tunnel)).toEqual([[2, 2], [5, 2]])
+    expect(tunnelEnds(new Set(), place(1, 3, 2, 1), tunnel)).toEqual([[3, 1], [3, 4]])
+  })
+
+  it('ống chui sát tường hoặc bị đồ chặn một đầu thì không chui được', () => {
+    expect(tunnelEnds(new Set(), place(1, 0, 2), tunnel)).toBeNull()
+    expect(tunnelEnds(new Set(['5,2']), place(1, 3, 2), tunnel)).toBeNull()
+  })
+
+  it('thú to (chó, capybara) không chui hộp, ống, bánh xe; thú nhỏ chạy bánh xe', () => {
+    for (const kind of ['dog', 'capybara']) expect(ACTIVITIES[kind].some((name) => ['box', 'tunnel', 'wheel'].includes(name))).toBe(false)
+    expect(ACTIVITIES.hamster).toContain('wheel')
+    expect(ACTIVITIES.cat).toContain('post')
   })
 })

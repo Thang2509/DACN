@@ -1,13 +1,15 @@
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 
 /**
  * Nội thất phòng thú cưng dựng bằng khối cơ bản. Gốc tọa độ ở tâm vùng đặt trên sàn, mặt trước hướng +z.
  * Kích thước theo lưới 1 ô = 0,5 đơn vị: sofa, bàn trà 2 × 1 ô; thảm tròn 2 × 2; thảm chữ nhật 3 × 2; còn lại 1 ô.
- * night (0–1): độ tối của trời, đèn cây sáng dần khi tối.
+ * night (0–1): độ tối của trời, đèn cây sáng dần khi tối; active: đang có thú dùng (bánh xe quay).
  */
-export default function Furniture({ code, night = 0 }) {
+export default function Furniture({ code, night = 0, active = false }) {
   const Item = FURNITURE[code] ?? Box
-  return <Item night={night} />
+  return <Item night={night} active={active} />
 }
 
 function Paint({ color, roughness = 0.8, ...props }) {
@@ -301,6 +303,93 @@ function Sofa() {
   )
 }
 
+// Trụ cào móng cho mèo: đế thảm, trụ quấn dây thừng, bệ trên cùng và quả bông treo lủng lẳng
+function ScratchingPost() {
+  const carpet = '#b9a4e8'
+  const rope = '#d9bb8a'
+  return (
+    <group>
+      <Soft size={[0.36, 0.05, 0.36]} radius={0.02} color={carpet} position-y={0.025} />
+      <Part color={rope} roughness={1} position-y={0.29}>
+        <cylinderGeometry args={[0.055, 0.055, 0.5, 16]} />
+      </Part>
+      {Array.from({ length: 9 }, (_, i) => (
+        <Part key={i} color="#c4a271" roughness={1} position-y={0.08 + i * 0.05} rotation-x={Math.PI / 2} shadow={false}>
+          <torusGeometry args={[0.057, 0.008, 6, 20]} />
+        </Part>
+      ))}
+      <Soft size={[0.3, 0.04, 0.3]} radius={0.02} color={carpet} position-y={0.56} />
+      <Part color="#7a6a5a" position={[0.12, 0.47, 0.12]} shadow={false}>
+        <cylinderGeometry args={[0.003, 0.003, 0.14, 4]} />
+      </Part>
+      <Part color="#ff6fb5" position={[0.12, 0.39, 0.12]}>
+        <icosahedronGeometry args={[0.03, 1]} />
+      </Part>
+    </group>
+  )
+}
+
+// Bánh xe chạy cho thú nhỏ: khung chữ A, bánh xe quay quanh trục ngang (x) khi có thú chạy bên trong
+const WHEEL_RADIUS = 0.2
+const WHEEL_RUNGS = 18
+function HamsterWheel({ active }) {
+  const wheel = useRef(null)
+  useFrame((_, delta) => {
+    if (active) wheel.current.rotation.x -= Math.min(delta, 0.05) * 4
+  })
+  return (
+    <group>
+      {[0.16, -0.16].map((x) => (
+        <group key={x}>
+          {[0.1, -0.1].map((z) => (
+            // Hai chân mỗi bên chụm lên trục bánh xe thành hình chữ A
+            <Part key={z} color="#5b43e6" position={[x, 0.115, z * 0.6]} rotation-x={-Math.sign(z) * 0.48}>
+              <boxGeometry args={[0.025, 0.26, 0.025]} />
+            </Part>
+          ))}
+        </group>
+      ))}
+      <Soft size={[0.38, 0.03, 0.3]} radius={0.01} color="#3b2c99" position-y={0.015} />
+      <group ref={wheel} position-y={WHEEL_RADIUS + 0.03}>
+        {[0.13, -0.13].map((x) => (
+          <Part key={x} color="#ff9f6b" roughness={0.4} position-x={x} rotation-y={Math.PI / 2}>
+            <torusGeometry args={[WHEEL_RADIUS, 0.012, 8, 40]} />
+          </Part>
+        ))}
+        {Array.from({ length: WHEEL_RUNGS }, (_, i) => {
+          const angle = (i / WHEEL_RUNGS) * Math.PI * 2
+          return (
+            <Part key={i} color="#ffd34d" roughness={0.4} position={[0, Math.cos(angle) * WHEEL_RADIUS, Math.sin(angle) * WHEEL_RADIUS]} rotation-z={Math.PI / 2} shadow={false}>
+              <cylinderGeometry args={[0.006, 0.006, 0.26, 6]} />
+            </Part>
+          )
+        })}
+        <Part color="#3b2c99" rotation-z={Math.PI / 2}>
+          <cylinderGeometry args={[0.02, 0.02, 0.34, 10]} />
+        </Part>
+      </group>
+    </group>
+  )
+}
+
+// Ống chui bằng vải dài 2 ô: ống mở hai đầu (trục theo x), có các gân vòng
+const TUNNEL_RADIUS = 0.17
+function PetTunnel() {
+  return (
+    <group position-y={TUNNEL_RADIUS}>
+      <mesh rotation-z={Math.PI / 2} castShadow receiveShadow>
+        <cylinderGeometry args={[TUNNEL_RADIUS, TUNNEL_RADIUS, 0.92, 28, 1, true]} />
+        <meshStandardMaterial color="#4aa3ff" roughness={0.9} side={2} />
+      </mesh>
+      {Array.from({ length: 7 }, (_, i) => (
+        <Part key={i} color={i === 0 || i === 6 ? '#ffd34d' : '#2f7fd6'} position-x={-0.45 + i * 0.15} rotation-y={Math.PI / 2} shadow={false}>
+          <torusGeometry args={[TUNNEL_RADIUS + 0.004, 0.009, 6, 32]} />
+        </Part>
+      ))}
+    </group>
+  )
+}
+
 // Món chưa có hình dựng riêng: hộp quà
 function Box() {
   return <Soft size={[0.3, 0.3, 0.3]} color="#fb8c3c" position-y={0.15} />
@@ -320,4 +409,7 @@ const FURNITURE = {
   armchair: Armchair,
   coffee_table: CoffeeTable,
   sofa: Sofa,
+  scratching_post: ScratchingPost,
+  hamster_wheel: HamsterWheel,
+  pet_tunnel: PetTunnel,
 }

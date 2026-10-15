@@ -110,7 +110,7 @@ export function RealisticLight({ night = 0, effects = true, bloom = false }) {
 }
 
 // Cả 7 loài đứng thành hàng (trang /design); focus: chỉ một loài, nhìn cận cảnh để soi chi tiết khi chỉnh thông số
-export function PetGallery({ state = 'idle', focus = null }) {
+export function PetGallery({ state = 'idle', focus = null, equipment = [] }) {
   const codes = focus ? [focus] : Object.keys(SPECIES)
   return (
     <ErrorBoundary fallback={<SceneFallback />}>
@@ -122,7 +122,7 @@ export function PetGallery({ state = 'idle', focus = null }) {
         {/* Cả bộ đứng cạnh nhau đúng tỉ lệ thật để so sánh; xem riêng một loài thì phóng thú nhỏ cho dễ nhìn */}
         {codes.map((code, i) => (
           <group key={code} position={[(i - (codes.length - 1) / 2) * 0.85, 0, 0]} rotation-y={focus ? 0 : 0.6} scale={focus ? petBoost(code) : 1}>
-            <PetBody species={code} state={state} />
+            <PetBody species={code} state={state} equipment={equipment} />
           </group>
         ))}
         <ContactShadows position-y={0.001} scale={10} blur={2} opacity={0.4} far={1.5} />

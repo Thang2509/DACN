@@ -324,6 +324,22 @@ function happy(t, ctx) {
   return { ...bowPose(ctx), lift: s * 0.05 * bounce, tailWag: 0.9 * wave(t, 4.5), jaw: 0.35, tongue: 0.8, look: 1, eyes: blink(t), headRoll: 0.18 * wave(t, 0.8) }
 }
 
+// Chơi đồ chơi: mèo đứng hai chân sau cào trụ, thỏ và hamster đứng ngó nghiêng, nhím nảy nhẹ, chó và capybara cúi vờn
+function play(t, ctx) {
+  const s = ctx.size
+  if (ctx.kind === 'cat') {
+    const paw = 0.5 + 0.5 * wave(t, 2.2)
+    const pose = { ...standPose(ctx), hipsPitch: -1.05, neckPitch: -0.1, headPitch: -0.2, tailLift: 0.3, tailWag: 0.4 * wave(t, 0.8), earsUp: 0.3, eyes: blink(t) }
+    setFoot(pose, 'FL', [s * 0.2, s * (0.5 + 0.1 * paw), 1])
+    setFoot(pose, 'FR', [s * 0.2, s * (0.5 + 0.1 * (1 - paw)), 1])
+    return pose
+  }
+  if (ctx.kind === 'rabbit' || ctx.kind === 'hamster') return { ...standPose(ctx), headYaw: 0.35 * wave(t, 0.6), eyes: blink(t) }
+  if (ctx.kind === 'hedgehog') return happy(t, ctx)
+  const pounce = Math.max(0, wave(t, 1.2))
+  return { ...bowPose(ctx), lift: s * 0.04 * pounce, tailWag: 0.8 * wave(t, 4), jaw: 0.25, tongue: ctx.kind === 'dog' ? 0.6 : 0, look: 0.3, eyes: blink(t) }
+}
+
 const POSES = {
   idle: (t) => ({
     lift: 0,
@@ -350,6 +366,7 @@ const POSES = {
     return ctx.kind === 'hedgehog' ? { ...pose, sink: legsOf(ctx) * 1.1, neckPitch: 0.9, headPitch: 0.8, hipsPitch: 0.15 } : pose
   },
   happy,
+  play,
   sad: (t, ctx) => ({ sink: legsOf(ctx) * 0.08, neckPitch: 0.35, headPitch: 0.3, earsUp: -0.8, tailLift: -0.8, tailWag: 0.05 * wave(t, 0.3), eyes: 0.6 + 0.4 * blink(t), breath: 0.7 }),
 }
 
