@@ -96,8 +96,8 @@ flowchart LR
 | --- | --- |
 | Tác nhân | Học viên, MoMo |
 | Luồng chính | 1. Chọn "Mua khóa" → 2. (Tùy chọn) chọn voucher → 3. Hệ thống tạo `orders` trạng thái `pending`, gọi API MoMo lấy `payUrl` → 4. Chuyển sang trang MoMo sandbox → 5. MoMo gọi IPN về backend → 6. Kiểm tra chữ ký, cập nhật đơn `paid`, tạo `enrollments`, đánh dấu voucher đã dùng (cùng transaction) → 7. Học viên quay lại trang kết quả |
-| Luồng phụ | 6a. Chữ ký sai hoặc số tiền lệch: bỏ qua, ghi log. 6b. Giao dịch thất bại: đơn `failed`, voucher không bị trừ |
-| Ràng buộc | IPN có thể gọi nhiều lần → xử lý idempotent theo `momo_order_id` |
+| Luồng phụ | 6a. Chữ ký sai hoặc số tiền lệch: bỏ qua, ghi log. 6b. Giao dịch thất bại: đơn `failed` kèm lý do (hủy trên MoMo, không đủ tiền…), voucher không bị trừ. 6c. Đơn chờ quá 100 phút (bằng thời hạn link thanh toán MoMo): tra cứu MoMo lần cuối rồi đóng đơn, trả voucher. 6d. Học viên bấm "Thanh toán tiếp" (dùng lại link MoMo cũ) hoặc "Hủy đơn" |
+| Ràng buộc | IPN có thể gọi nhiều lần → xử lý idempotent theo `momo_order_id`, email biên nhận chỉ gửi một lần. Mỗi khóa chỉ có một đơn chờ; voucher gắn vào đơn chờ bị giữ, không dùng cho đơn khác. Tiền đã trừ thì luôn ghi danh, kể cả đơn vừa bị đóng |
 
 **UC33/UC41 – Gửi và duyệt khóa học**
 
@@ -222,12 +222,14 @@ erDiagram
     int card_index
     decimal easiness "SM-2, mặc định 2.5"
     int interval_days
-    int repetitions
+    int repetitions "số lần nhớ liên tiếp"
+    int review_count "tổng số lần ôn"
     date due_on
+    timestamp last_reviewed_at
   }
   study_plans {
-    bigint user_id FK
-    json study_days "vd [1,3,5]"
+    bigint user_id PK
+    json study_days "thứ theo ISO, vd [1,3,5]"
     int lessons_per_day
   }
 ```
@@ -258,9 +260,9 @@ erDiagram
   point_ledger {
     bigint id PK
     bigint user_id FK
-    enum currency "xp | coin"
-    int amount "âm khi tiêu"
     string reason
+    int xp
+    int coins "âm khi tiêu"
     string idempotency_key UK
     json meta
     timestamp created_at "chỉ thêm, không sửa"
@@ -281,6 +283,7 @@ erDiagram
     int target_value
     int reward_xp
     int reward_coins
+    bool is_active
   }
   user_quests {
     bigint user_id FK "UK(user, quest, period_start)"
@@ -293,8 +296,12 @@ erDiagram
     bigint id PK
     string code UK
     string name
+    string description
+    string icon "emoji"
     string condition_type
     int condition_value
+    int reward_coins
+    bool is_active
   }
   user_badges {
     bigint user_id FK
@@ -308,6 +315,7 @@ erDiagram
     int max_discount
     int coin_cost
     int valid_days
+    bool is_active
   }
   user_vouchers {
     bigint id PK
@@ -328,7 +336,10 @@ erDiagram
     enum status "pending | paid | failed"
     string momo_order_id UK
     string momo_trans_id
+    string pay_url "link MoMo để thanh toán tiếp"
+    string failure_reason
     timestamp paid_at
+    timestamp expires_at "tạo đơn + 100 phút"
   }
 ```
 
@@ -350,19 +361,22 @@ erDiagram
     bigint id PK
     string code UK
     string name
-    string model_path ".glb"
+    string description
+    string egg_color "màu trứng"
     int egg_price "xu"
+    bool is_starter "chọn được làm trứng đầu tiên"
   }
   user_pets {
     bigint id PK
     bigint user_id FK
     bigint pet_species_id FK
     string nickname
-    enum stage "egg | hatchling | baby | adult | evolved"
+    enum stage "hatchling | baby | adult | evolved"
     int growth_xp
     int fullness "0-100"
     int happiness "0-100"
     int energy "0-100"
+    bool is_sleeping
     bool is_active
     timestamp stats_updated_at
   }
@@ -372,9 +386,10 @@ erDiagram
     string name
     enum type "food | accessory | furniture"
     string bone_slot "head | neck | back"
-    string model_path
     int price "xu"
-    json effect
+    json effect "thức ăn: fullness; thảm: floor"
+    int size_x "số ô chiếm trên sàn"
+    int size_z
   }
   user_items {
     bigint user_id FK "UK(user, item)"
@@ -389,12 +404,16 @@ erDiagram
   room_items {
     bigint user_id FK
     bigint pet_item_id FK
-    json transform "vị trí, góc xoay"
+    int x "ô trên lưới 8 x 8"
+    int z
+    int rotation "số lần xoay 90 độ"
   }
   minigame_scores {
     bigint user_id FK
-    string game
+    string game "runner | keywords"
     int score
+    int duration_seconds
+    timestamp created_at
   }
 ```
 
@@ -428,21 +447,21 @@ flowchart LR
 - **Controller mỏng:** nhận request đã kiểm tra bởi Form Request, gọi Service, trả JSON (API Resource khi cần ẩn trường).
 - **Service:** chứa nghiệp vụ và transaction. Không có tầng Repository.
 - **Phân quyền:** cột `users.role` + Gate (`can:admin`, `can:teach`) cho nhóm route; Gate `manage-course` kiểm tra quyền sở hữu khóa học.
-- **Hàng đợi `database`:** chạy `php artisan queue:work`. Lịch chạy (`schedule:work`) cho nhiệm vụ, chỉ số thú cưng.
+- **Hàng đợi `database`:** phát thưởng chạy qua Listener trong hàng đợi, khi dev cần chạy thêm `php artisan queue:work`. Chỉ số thú cưng (giảm theo giờ) và kỳ nhiệm vụ ngày/tuần được tính lại khi đọc nên không cần lịch chạy.
 
 ### 4.2 Luồng phát thưởng
 
 ```mermaid
 sequenceDiagram
   participant FE as React
-  participant LC as LessonProgressController
-  participant PS as ProgressService
+  participant LC as LearningController
+  participant PS as LearningService
   participant Q as Queue (database)
   participant L as GrantLessonRewards (Listener)
   participant RS as RewardService
   participant DB as MySQL
   FE->>LC: POST /api/lessons/{id}/complete
-  LC->>PS: complete(user, lesson)
+  LC->>PS: completeLesson(user, lesson)
   PS->>DB: insert lesson_progress (bỏ qua nếu đã có)
   PS-->>Q: event LessonCompleted
   LC-->>FE: 200 {completed: true}

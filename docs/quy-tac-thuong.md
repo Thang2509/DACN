@@ -53,7 +53,7 @@ Công thức tính cấp từ XP: `cấp = floor((1 + √(1 + 8·XP/100)) / 2)`.
 | Voucher giảm 25% (tối đa 150 000đ, hạn 30 ngày) | 500 | như trên |
 | Thức ăn thú cưng | 10–30 | `item:{user}:{uuid}` |
 | Trang bị / nội thất | 50–300 | như trên |
-| Trứng loài mới | 500 | như trên |
+| Trứng loài mới (bộ sưu tập) | 500 | `egg:{user}:{species}` |
 
 - Trừ xu: khóa dòng `wallets` (`lockForUpdate`), số dư không đủ → từ chối, không ghi ledger.
 - Mỗi đơn hàng dùng tối đa 1 voucher; voucher chỉ bị đánh dấu dùng khi đơn `paid`.
@@ -70,7 +70,7 @@ Công thức tính cấp từ XP: `cấp = floor((1 + √(1 + 8·XP/100)) / 2)`.
 | Mỗi giờ trôi qua | −3 | −2 | −1 | 0 |
 
 - Chỉ số nằm trong 0–100, tính lại khi đọc dựa trên `stats_updated_at` (không cần cron mỗi giờ).
-- Giai đoạn theo XP thú: trứng → nở (100) → con non (300) → trưởng thành (1 000) → tiến hóa (3 000 và chuỗi ≥ 7 ngày).
+- Trứng nở ngay khi nhận (không cần ấp), thú bắt đầu ở giai đoạn mới nở. Giai đoạn theo XP thú: mới nở (0) → con non (300) → trưởng thành (1 000) → tiến hóa (3 000 và chuỗi ≥ 7 ngày).
 - Tâm trạng hiển thị: vui nếu cả 3 chỉ số ≥ 60, buồn nếu có chỉ số < 25, ngủ nếu năng lượng < 15.
 
 ## 6. Chống gian lận
@@ -78,3 +78,38 @@ Công thức tính cấp từ XP: `cấp = floor((1 + √(1 + 8·XP/100)) / 2)`.
 - Mọi phần thưởng tính ở backend dựa trên dữ liệu đã lưu; frontend chỉ hiển thị.
 - Không thưởng cho khóa học của chính giảng viên đó.
 - Các khóa duy nhất bảo đảm gọi lại API hoặc chạy lại job không cộng điểm 2 lần.
+
+## 7. Ôn tập flashcard (SM-2)
+
+- Thẻ trong khối flashcard của bài đã hoàn thành vào hàng ôn, đến hạn ngay hôm đó.
+- Mỗi lần ôn chọn mức nhớ: Quên (q = 1), Khó (3), Nhớ (4), Dễ (5).
+- Độ dễ mới `EF' = max(1,3; EF + 0,1 − (5 − q)(0,08 + (5 − q) × 0,02))`.
+- q < 3: học lại, ôn sau 1 ngày. Nhớ: lần 1 sau 1 ngày, lần 2 sau 6 ngày, sau đó `khoảng cũ × EF`.
+- Chỉ ôn thẻ **đến hạn** mới được thưởng R05 và tính vào nhiệm vụ "Ôn 10 thẻ flashcard".
+
+## 8. Huy hiệu
+
+| Huy hiệu | Điều kiện | Xu |
+| --- | --- | --- |
+| Bước đầu tiên | Hoàn thành 1 bài | 10 |
+| Chăm chỉ / Học giả | Hoàn thành 10 / 30 bài | 30 / 80 |
+| Về đích | Hoàn thành 1 khóa | 50 |
+| Lửa bền bỉ / Không bỏ cuộc | Chuỗi dài nhất 7 / 30 ngày | 30 / 150 |
+| Ngôi sao mới / Ngôi sao sáng | Đạt cấp 5 / 10 | 30 / 80 |
+| Bách phát bách trúng | 10 quiz đúng hết ngay lần đầu | 40 |
+| Trí nhớ vàng | Ôn flashcard 100 lượt | 40 |
+| Nhà sưu tầm | Có 3 loài thú | 50 |
+| Tay chơi | 500 điểm trong một minigame | 20 |
+
+- Kiểm tra sau mỗi lần phát thưởng (bài học, quiz, ôn thẻ, minigame) và sau khi mua trứng.
+- Quản trị viên thêm/sửa/tắt huy hiệu ở trang Quản trị → Phần thưởng.
+
+## 9. Minigame
+
+| Game | Cách tính điểm |
+| --- | --- |
+| Vượt chướng ngại | 1 điểm mỗi đơn vị quãng đường; tốc độ 5 → 12 đơn vị/giây |
+| Hứng từ khóa code | +10 mỗi chữ đúng chủ đề; hứng sai mất 1 trong 3 mạng; tối đa 60 giây |
+
+- Điểm gửi lên bị từ chối nếu vượt 40 điểm/giây chơi (chống gửi điểm giả).
+- 4 lượt đầu mỗi ngày được thưởng R12; lượt nào cũng làm thú vui +15, năng lượng −10.

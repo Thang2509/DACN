@@ -18,11 +18,14 @@ class Course extends Model
     public const LEVELS = ['beginner', 'intermediate', 'advanced'];
 
     // Chủ đề hiển thị thành tab ở danh mục
-    public const CATEGORIES = ['database', 'frontend', 'backend', 'algorithms', 'devops', 'security'];
+    public const CATEGORIES = ['database', 'frontend', 'backend', 'programming', 'algorithms', 'devops', 'security'];
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_PUBLISHED = 'published';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = ['title', 'summary', 'description', 'level', 'category', 'price', 'playground_sql'];

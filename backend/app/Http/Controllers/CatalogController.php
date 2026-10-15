@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\LearningPath;
+use App\Models\Lesson;
+use App\Models\PetSpecies;
+use App\Models\User;
 use App\Services\LearningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -59,5 +62,16 @@ class CatalogController extends Controller
             ->withCount('lessons')
             ->withSum('lessons', 'duration_minutes'),
         ])->get();
+    }
+
+    // Số liệu nổi bật cho trang chủ của khách
+    public function stats()
+    {
+        return [
+            'courses' => Course::published()->count(),
+            'lessons' => Lesson::whereHas('chapter.course', fn ($query) => $query->published())->count(),
+            'students' => User::where('role', 'student')->count(),
+            'species' => PetSpecies::count(),
+        ];
     }
 }

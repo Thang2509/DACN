@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Events\LessonCompleted;
+use App\Events\QuizQuestionAnswered;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Lesson;
@@ -41,7 +43,7 @@ class LearningService
             $this->fail('course', 'Khóa học chưa được xuất bản.');
         }
         if ($course->price > 0) {
-            $this->fail('course', 'Khóa học có phí, chức năng mua khóa học sẽ mở ở đợt sau.');
+            $this->fail('course', 'Khóa học có phí, hãy mua khóa học để học.');
         }
 
         return Enrollment::firstOrCreate(['user_id' => $user->id, 'course_id' => $course->id]);
@@ -150,6 +152,16 @@ class LearningService
         }
         $attempt->save();
 
+        // Báo cho phần phát thưởng (chạy qua hàng đợi)
+        $isFirstAttempt = QuizAttempt::where('user_id', $user->id)->where('lesson_block_id', $block->id)->count() === 1;
+        QuizQuestionAnswered::dispatch(
+            $user->id,
+            $block->id,
+            $question,
+            $answer === $block->content['questions'][$question]['answer'],
+            $isFirstAttempt && $attempt->completed_at !== null && $attempt->correct_count === $count,
+        );
+
         return $this->attemptView($block, $attempt, $this->finishedBlockIds($user, [$block->id])->isNotEmpty());
     }
 
@@ -166,16 +178,22 @@ class LearningService
             $this->fail('lesson', 'Hãy trả lời hết các câu quiz trước khi hoàn thành bài.');
         }
 
-        LessonProgress::firstOrCreate(
+        $record = LessonProgress::firstOrCreate(
             ['user_id' => $user->id, 'lesson_id' => $lesson->id],
             ['completed_at' => now()],
         );
 
         $progress = $this->progress($user, $course);
-        if ($progress['completed'] === $progress['total']) {
+        $courseCompleted = $progress['completed'] === $progress['total'];
+        if ($courseCompleted) {
             Enrollment::where('user_id', $user->id)->where('course_id', $course->id)
                 ->whereNull('completed_at')
                 ->update(['completed_at' => now()]);
+        }
+
+        // Chỉ lần hoàn thành đầu tiên mới phát thưởng (chạy qua hàng đợi)
+        if ($record->wasRecentlyCreated) {
+            LessonCompleted::dispatch($user->id, $lesson->id, $courseCompleted);
         }
 
         return $progress;

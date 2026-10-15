@@ -71,6 +71,10 @@ class CourseService
         if (! $course->lessons()->exists()) {
             $this->fail('course', 'Cần ít nhất 1 bài học trước khi gửi duyệt.');
         }
+        $empty = $course->lessons()->whereDoesntHave('blocks')->first();
+        if ($empty) {
+            $this->fail('course', "Bài “{$empty->title}” chưa có nội dung, hãy soạn ít nhất 1 khối.");
+        }
 
         $course->status = Course::STATUS_PENDING;
         $course->review_note = null;

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Chapter;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\LessonBlock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +39,14 @@ class CourseManagementTest extends TestCase
             ->assertJsonPath('slug', 'cau-truc-du-lieu')
             ->assertJsonPath('status', 'draft');
         $this->postJson('/api/instructor/courses', self::COURSE)->assertJsonPath('slug', 'cau-truc-du-lieu-2');
+    }
+
+    public function test_khoa_co_phi_toi_thieu_1000d_de_thanh_toan_momo(): void
+    {
+        $this->actingAs(User::factory()->instructor()->create());
+
+        $this->postJson('/api/instructor/courses', [...self::COURSE, 'price' => 500])->assertJsonValidationErrors('price');
+        $this->postJson('/api/instructor/courses', [...self::COURSE, 'price' => 1000])->assertCreated();
     }
 
     public function test_khong_sua_duoc_khoa_cua_giang_vien_khac(): void
@@ -121,14 +130,18 @@ class CourseManagementTest extends TestCase
             ->assertJsonValidationErrors('chapters');
     }
 
-    public function test_gui_duyet_can_it_nhat_mot_bai(): void
+    public function test_gui_duyet_can_it_nhat_mot_bai_va_bai_nao_cung_co_noi_dung(): void
     {
         $course = Course::factory()->create();
         $this->actingAs($course->instructor);
 
         $this->postJson("/api/instructor/courses/{$course->id}/submit")->assertJsonValidationErrors('course');
 
-        Lesson::factory()->for(Chapter::factory()->for($course))->create();
+        $lesson = Lesson::factory()->for(Chapter::factory()->for($course))->create(['title' => 'Bài trống']);
+        $this->postJson("/api/instructor/courses/{$course->id}/submit")
+            ->assertJsonPath('errors.course.0', 'Bài “Bài trống” chưa có nội dung, hãy soạn ít nhất 1 khối.');
+
+        LessonBlock::factory()->for($lesson)->create();
         $this->postJson("/api/instructor/courses/{$course->id}/submit")->assertOk()->assertJsonPath('status', 'pending');
     }
 

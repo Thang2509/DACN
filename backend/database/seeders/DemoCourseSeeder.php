@@ -187,7 +187,7 @@ class DemoCourseSeeder extends Seeder
                             ['Hệ nào sau đây KHÔNG phải CSDL quan hệ?', ['PostgreSQL', 'SQLite', 'Microsoft Word'], 2, 'Word là phần mềm soạn thảo văn bản.'],
                         ]],
                     ['title' => 'Bảng, cột và dòng',
-                        'text' => "Dữ liệu được lưu trong **bảng**. Mỗi **cột** là một thuộc tính (tên, điểm…), mỗi **dòng** là một bản ghi. Cột **khóa chính** giúp phân biệt các dòng.",
+                        'text' => 'Dữ liệu được lưu trong **bảng**. Mỗi **cột** là một thuộc tính (tên, điểm…), mỗi **dòng** là một bản ghi. Cột **khóa chính** giúp phân biệt các dòng.',
                         'quiz' => ['Mỗi dòng trong bảng `students` biểu diễn gì?', ['Một sinh viên', 'Một thuộc tính', 'Một bảng khác'], 0, 'Mỗi dòng là một bản ghi, ở đây là một sinh viên.']],
                 ]],
                 ['Truy vấn dữ liệu', [

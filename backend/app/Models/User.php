@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -12,12 +13,15 @@ use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     public const ROLE_STUDENT = 'student';
+
     public const ROLE_INSTRUCTOR = 'instructor';
+
     public const ROLE_ADMIN = 'admin';
+
     public const ROLES = [self::ROLE_STUDENT, self::ROLE_INSTRUCTOR, self::ROLE_ADMIN];
 
     protected $fillable = ['name', 'email', 'password', 'bio'];

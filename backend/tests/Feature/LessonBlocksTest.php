@@ -67,6 +67,12 @@ class LessonBlocksTest extends TestCase
         $this->saveBlocks($lesson, [['type' => 'section', 'content' => ['title' => 'Phần mở đầu']]])->assertOk();
     }
 
+    public function test_thong_bao_loi_dung_ten_truong_tieng_viet(): void
+    {
+        $this->saveBlocks(Lesson::factory()->create(), [['type' => 'markdown', 'content' => ['text' => '']]])
+            ->assertJsonPath('errors', ['blocks.0.content.text' => ['Vui lòng nhập nội dung văn bản.']]);
+    }
+
     public function test_id_khoi_cua_bai_khac_thi_tao_khoi_moi(): void
     {
         $lesson = Lesson::factory()->create();

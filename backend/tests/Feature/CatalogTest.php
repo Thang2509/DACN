@@ -96,4 +96,17 @@ class CatalogTest extends TestCase
             ->assertJsonPath('data.0.lessons_sum_duration_minutes', 60);
         $this->getJson('/api/courses?category=khong-co')->assertJsonValidationErrors('category');
     }
+
+    public function test_so_lieu_trang_chu_chi_dem_khoa_da_xuat_ban(): void
+    {
+        Lesson::factory()->for(Chapter::factory()->for(Course::factory()->published()))->create();
+        Lesson::factory()->for(Chapter::factory()->for(Course::factory()))->create(); // khóa nháp
+        User::factory()->count(2)->create();
+
+        $this->getJson('/api/stats/public')
+            ->assertOk()
+            ->assertJsonPath('courses', 1)
+            ->assertJsonPath('lessons', 1)
+            ->assertJsonPath('students', 2);
+    }
 }

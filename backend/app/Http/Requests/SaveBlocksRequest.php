@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 class SaveBlocksRequest extends FormRequest
 {
     // Quy tắc cho phần content của từng loại khối
-    private const CONTENT_RULES = [
+    public const CONTENT_RULES = [
         'section' => [
             'title' => 'required|string|max:200',
         ],
@@ -69,6 +69,37 @@ class SaveBlocksRequest extends FormRequest
         }
 
         return $rules;
+    }
+
+    // Tên trường hiện trong thông báo lỗi (thay cho "blocks.0.content.text")
+    private const FIELD_NAMES = [
+        'title' => 'tiêu đề phần',
+        'text' => 'nội dung văn bản',
+        'url' => 'đường dẫn video',
+        'caption' => 'chú thích',
+        'variant' => 'kiểu quiz',
+        'questions' => 'danh sách câu hỏi',
+        'questions.*.question' => 'câu hỏi',
+        'questions.*.options' => 'các lựa chọn',
+        'questions.*.options.*' => 'lựa chọn',
+        'questions.*.answer' => 'đáp án đúng',
+        'questions.*.explanation' => 'giải thích',
+        'component' => 'loại hoạt ảnh',
+        'params' => 'tham số',
+        'language' => 'ngôn ngữ',
+        'instructions' => 'đề bài',
+        'starter' => 'code ban đầu',
+        'solution' => 'lời giải',
+        'setup' => 'dữ liệu mẫu',
+        'expected' => 'kết quả mong đợi',
+        'cards' => 'danh sách thẻ',
+        'cards.*.front' => 'mặt trước thẻ',
+        'cards.*.back' => 'mặt sau thẻ',
+    ];
+
+    public function attributes(): array
+    {
+        return collect(self::FIELD_NAMES)->mapWithKeys(fn ($name, $field) => ["blocks.*.content.$field" => $name])->all();
     }
 
     // Đáp án đúng của quiz phải là một trong các lựa chọn

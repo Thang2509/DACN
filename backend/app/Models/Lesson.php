@@ -27,4 +27,10 @@ class Lesson extends Model
     {
         return $this->hasMany(LessonBlock::class)->orderBy('position');
     }
+
+    // Các lượt hoàn thành bài của học viên
+    public function progress(): HasMany
+    {
+        return $this->hasMany(LessonProgress::class);
+    }
 }
