@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Badge, Button, Card, Input, Textarea } from '../../components/ui'
+import { Alert, Badge, Button, Card, Input, PageLoading, Textarea } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { useForm } from '../../lib/useForm'
 import { lessonPath, updateLesson } from '../courses/api'
@@ -18,7 +18,7 @@ export default function LessonEditorPage() {
     refetchOnMount: 'always', // luôn lấy bản mới nhất khi mở trình soạn
   })
 
-  if (isLoading) return <p className="text-muted">Đang tải…</p>
+  if (isLoading) return <PageLoading />
   if (error) return <Alert tone="danger">{error.message}</Alert>
   return <Editor key={lesson.id} lesson={lesson} />
 }

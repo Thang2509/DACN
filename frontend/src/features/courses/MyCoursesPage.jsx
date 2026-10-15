@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, Button, Card, ProgressBar } from '../../components/ui'
+import { Badge, Button, Card, PageLoading, ProgressBar } from '../../components/ui'
 import { getEnrolledCourses, lessonPath } from './api'
 import CourseCard from './CourseCard'
 
@@ -9,8 +9,12 @@ export default function MyCoursesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-extrabold">Khóa học của tôi</h1>
-      {isLoading && <p className="text-muted">Đang tải…</p>}
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-3xl font-extrabold">Khóa học của tôi</h1>
+        <Link to="/review" className="ml-auto"><Button variant="outline" size="sm">Ôn tập flashcard</Button></Link>
+        <Link to="/orders" className="text-sm font-semibold text-primary-600">Đơn hàng của tôi</Link>
+      </div>
+      {isLoading && <PageLoading title={false} />}
       {!isLoading && courses.length === 0 && (
         <Card className="space-y-3 text-center">
           <p className="text-muted">Bạn chưa đăng ký khóa học nào.</p>

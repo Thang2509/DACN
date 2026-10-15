@@ -7,6 +7,7 @@ export const CATEGORY_OPTIONS = {
   database: 'Database',
   frontend: 'Frontend',
   backend: 'Backend',
+  programming: 'Lập trình',
   algorithms: 'Thuật toán',
   devops: 'DevOps',
   security: 'Bảo mật',
@@ -19,6 +20,7 @@ export const lessonPath = (courseSlug, lessonSlug) => `/courses/${courseSlug}/le
 export const getCourses = (filters) => api(`/courses${toQuery(filters)}`)
 export const getCourseDetail = (slug) => api(`/courses/${slug}`)
 export const getLearningPaths = () => api('/learning-paths')
+export const getPublicStats = () => api('/stats/public')
 export const enrollCourse = (id) => api(`/courses/${id}/enroll`, { method: 'POST' })
 export const getEnrolledCourses = () => api('/my/courses')
 
@@ -48,3 +50,6 @@ export const saveOutline = (courseId, chapters) =>
     method: 'PUT',
     body: { chapters: chapters.map((chapter) => ({ id: chapter.id, lessons: chapter.lessons.map((lesson) => lesson.id) })) },
   })
+
+// Thống kê khóa học của giảng viên (course: id khóa muốn xem chi tiết, bỏ trống = khóa đầu tiên)
+export const getInstructorStats = (courseId) => api(`/instructor/stats${courseId ? `?course=${courseId}` : ''}`)

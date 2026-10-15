@@ -11,7 +11,7 @@ export default function Drawer({ open, title, onClose, children }) {
 
   if (!open) return null
   return (
-    <aside className="fixed bottom-0 right-0 top-14 z-30 flex w-full max-w-md flex-col border-l border-primary-100 bg-card shadow-card">
+    <aside className="fixed bottom-16 right-0 top-14 z-30 xl:bottom-0 flex w-full max-w-md flex-col border-l border-primary-100 bg-card shadow-card">
       <header className="flex items-center justify-between border-b border-primary-100 px-5 py-3">
         <h2 className="font-bold">{title}</h2>
         <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-muted hover:bg-primary-50" aria-label="Đóng">✕</button>

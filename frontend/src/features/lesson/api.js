@@ -11,3 +11,7 @@ export const getLesson = (courseSlug, lessonSlug) => api(`/courses/${courseSlug}
 export const answerQuestion = (lessonId, blockId, question, answer) =>
   api(`/lessons/${lessonId}/quiz/${blockId}/answer`, { method: 'POST', body: { question, answer } })
 export const completeLesson = (id) => api(`/lessons/${id}/complete`, { method: 'POST' })
+
+// Ôn tập flashcard (SM-2): thẻ đến hạn hôm nay và chấm mức nhớ (again | hard | good | easy)
+export const getReviews = () => api('/reviews')
+export const reviewCard = (id, rating) => api(`/reviews/${id}`, { method: 'POST', body: { rating } })

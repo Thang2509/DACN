@@ -1,16 +1,45 @@
-import { Badge, Button, Card, Input, ProgressBar } from './ui'
+import { lazy, Suspense, useState } from 'react'
+import { PET_STATES, SPECIES } from '../features/pet/petStates'
+import { Badge, Button, Card, Input, ProgressBar, Skeleton } from './ui'
+
+const PetGallery = lazy(() => import('../features/pet/PetScene').then((module) => ({ default: module.PetGallery })))
 
 // Trang xem nhanh design system (màu, chữ, component) trong lúc phát triển
 const SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]
 const GAME_COLORS = ['xp', 'coin', 'streak', 'success', 'danger', 'ink', 'muted']
 
 export default function DesignPreview() {
+  const [petState, setPetState] = useState('idle')
+  const [petFocus, setPetFocus] = useState(null)
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-extrabold">Design system</h1>
         <p className="mt-2 text-muted">Tím indigo cho thương hiệu, cam để nhấn hành động và phần thưởng.</p>
       </div>
+
+      <Section title="Thú cưng (dựng bằng code)">
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(PET_STATES).map(([key, { label }]) => (
+            <Button key={key} size="sm" variant={petState === key ? 'primary' : 'outline'} onClick={() => setPetState(key)}>
+              {label}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[null, ...Object.keys(SPECIES)].map((code) => (
+            <Button key={code ?? 'all'} size="sm" variant={petFocus === code ? 'accent' : 'ghost'} onClick={() => setPetFocus(code)}>
+              {code ?? 'Tất cả'}
+            </Button>
+          ))}
+        </div>
+        <div className="h-96 overflow-hidden rounded-2xl">
+          <Suspense fallback={<Skeleton className="h-96" />}>
+            <PetGallery state={petState} focus={petFocus} />
+          </Suspense>
+        </div>
+      </Section>
 
       <Section title="Màu sắc">
         <Palette name="primary" />

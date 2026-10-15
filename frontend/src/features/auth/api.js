@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { api, toFormData } from '../../lib/api'
 
 // Trả về null thay vì lỗi khi chưa đăng nhập
@@ -24,6 +24,18 @@ export const updatePassword = (data) => api('/profile/password', { method: 'PUT'
 export function useUser() {
   const { data, isLoading } = useQuery({ queryKey: ['me'], queryFn: getMe, staleTime: Infinity })
   return { user: data ?? null, isLoading }
+}
+
+/**
+ * Đăng xuất rồi tải lại trang chủ (dùng ở menu tài khoản và thanh tab trên điện thoại).
+ * Tải lại cả trang thay vì chuyển trang trong ứng dụng: dữ liệu của người dùng cũ bị xóa sạch, và trang
+ * cần đăng nhập đang mở không kịp chuyển sang /login (React Router đổi trang chậm hơn việc xóa người dùng).
+ */
+export function useLogout() {
+  return useMutation({
+    mutationFn: logout,
+    onSuccess: () => window.location.replace('/'),
+  })
 }
 
 export const canTeach = (user) => ['instructor', 'admin'].includes(user?.role)

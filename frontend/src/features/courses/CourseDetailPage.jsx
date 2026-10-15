@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Alert, Avatar, Badge, Button, Card, ProgressBar } from '../../components/ui'
+import { Alert, Avatar, Badge, Button, Card, PageLoading, ProgressBar } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { formatDuration, formatPrice } from '../../lib/format'
 import { useUser } from '../auth/api'
+import CheckoutBox from '../payment/CheckoutBox'
 import { CATEGORY_OPTIONS, enrollCourse, getCourseDetail, lessonPath, LEVEL_OPTIONS } from './api'
 import { Thumbnail } from './CourseCard'
 
@@ -15,7 +16,7 @@ export default function CourseDetailPage() {
     retry: false,
   })
 
-  if (isLoading) return <p className="text-muted">Đang tải…</p>
+  if (isLoading) return <PageLoading />
   if (error) return <Alert tone="danger">{error.status === 404 ? 'Không tìm thấy khóa học.' : error.message}</Alert>
 
   const lessons = course.chapters.flatMap((chapter) => chapter.lessons)
@@ -83,7 +84,7 @@ export default function CourseDetailPage() {
   )
 }
 
-// Hộp hành động: học tiếp / đăng ký miễn phí / mua (sắp có) / học thử
+// Hộp hành động: học tiếp / đăng ký miễn phí / mua qua MoMo / học thử
 function EnrollBox({ course, firstPreview }) {
   const { user } = useUser()
   const location = useLocation()
@@ -116,7 +117,7 @@ function EnrollBox({ course, firstPreview }) {
     return (
       <>
         <p className="text-2xl font-extrabold text-accent-600">{formatPrice(course.price)}</p>
-        <Button className="w-full" disabled>Mua khóa học (sắp có)</Button>
+        <CheckoutBox course={course} />
         {previewButton}
       </>
     )

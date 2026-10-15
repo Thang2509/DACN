@@ -24,8 +24,11 @@ export function Button({ variant = 'primary', size = 'md', className = '', ...pr
   )
 }
 
+// Thẻ kính mờ (lớp .glass trong index.css); thêm thuộc tính data-tilt để thẻ nghiêng theo chuột.
+// Truyền p-… riêng (vd. p-0 cho thẻ có ảnh bìa sát mép) thì bỏ p-6 mặc định, vì trong CSS p-6 đứng sau nên luôn thắng
 export function Card({ className = '', ...props }) {
-  return <div className={`rounded-2xl bg-card p-6 shadow-card ${className}`} {...props} />
+  const padding = /(^|\s)p-/.test(className) ? '' : 'p-6'
+  return <div className={`glass rounded-2xl ${padding} ${className}`} {...props} />
 }
 
 const BADGE_COLORS = {
@@ -135,4 +138,28 @@ const ALERT_TONES = {
 
 export function Alert({ tone = 'info', className = '', ...props }) {
   return <div className={`rounded-xl border-2 px-4 py-3 text-sm ${ALERT_TONES[tone]} ${className}`} {...props} />
+}
+
+// Khối xám nhấp nháy giữ chỗ trong lúc tải dữ liệu
+export function Skeleton({ className = '' }) {
+  return <div className={`animate-pulse rounded-xl bg-primary-100/70 ${className}`} />
+}
+
+// Khung trang đang tải: tiêu đề và vài thẻ giữ chỗ (thay cho dòng chữ "Đang tải…");
+// title={false} khi trang đã có tiêu đề riêng
+export function PageLoading({ title = true }) {
+  return (
+    <div className="space-y-6" role="status" aria-label="Đang tải">
+      {title && <Skeleton className="h-9 w-56" />}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="space-y-3 rounded-2xl bg-card p-5 shadow-card">
+            <Skeleton className="h-28" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Button, Card, Input, Select } from '../../components/ui'
+import { Button, Card, Input, PageLoading, Select } from '../../components/ui'
 import { CATEGORY_OPTIONS, getCourses, getLearningPaths, LEVEL_OPTIONS } from './api'
 import CourseCard from './CourseCard'
 
@@ -66,7 +66,7 @@ export default function CatalogPage() {
         <Select options={{ '': 'Mới nhất', popular: 'Phổ biến' }} value={filters.sort} onChange={(e) => setFilter('sort', e.target.value)} />
       </Card>
 
-      {isLoading && <p className="text-muted">Đang tải…</p>}
+      {isLoading && <PageLoading title={false} />}
       {data?.data.length === 0 && <Card className="text-center text-muted">Không tìm thấy khóa học phù hợp.</Card>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {data?.data.map((course) => <CourseCard key={course.id} course={course} />)}

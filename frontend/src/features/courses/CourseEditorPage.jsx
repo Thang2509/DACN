@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import CodeEditor from '../../components/CodeEditor'
 import CourseStatusBadge from '../../components/CourseStatusBadge'
-import { Alert, Button, Card, Input, Select, Textarea } from '../../components/ui'
+import { Alert, Button, Card, Input, PageLoading, Select, Textarea } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { useForm } from '../../lib/useForm'
 import { CATEGORY_OPTIONS, courseKey, deleteCourse, getCourse, LEVEL_OPTIONS, submitCourse, updateCourse, uploadThumbnail } from './api'
@@ -14,7 +14,7 @@ export default function CourseEditorPage() {
   const { courseId } = useParams()
   const { data: course, isLoading, error } = useQuery({ queryKey: courseKey(courseId), queryFn: () => getCourse(courseId) })
 
-  if (isLoading) return <p className="text-muted">Đang tải…</p>
+  if (isLoading) return <PageLoading />
   if (error) return <Alert tone="danger">{error.message}</Alert>
 
   return (

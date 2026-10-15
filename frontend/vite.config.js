@@ -7,7 +7,7 @@ const backend = 'http://localhost:8000'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: {
+  server: { port : 5173, strictPort: true, open: true, cors: true, hmr: true,
     proxy: {
       '/api': backend,
       '/sanctum': backend,

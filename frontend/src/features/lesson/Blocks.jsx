@@ -276,6 +276,22 @@ export function RunResult({ run, isSql }) {
 }
 
 // Thẻ ghi nhớ lật hai mặt
+// Thẻ hai mặt, bấm để lật (dùng ở khối flashcard và trang Ôn tập)
+export function FlipCard({ front, back, flipped, onFlip }) {
+  const face = 'absolute inset-0 grid place-items-center rounded-2xl p-6 text-center text-xl font-bold [backface-visibility:hidden]'
+  return (
+    <button type="button" onClick={onFlip} className="relative mx-auto block h-48 w-full max-w-md [perspective:1000px]" aria-label="Lật thẻ">
+      <div
+        className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d]"
+        style={{ transform: flipped ? 'rotateY(180deg)' : 'none' }}
+      >
+        <div className={`${face} bg-primary-600 text-white`}>{front}</div>
+        <div className={`${face} bg-accent-100 text-accent-800 [transform:rotateY(180deg)]`}>{back}</div>
+      </div>
+    </button>
+  )
+}
+
 function FlashcardBlock({ cards }) {
   const [index, setIndex] = useState(0)
   const [flipped, setFlipped] = useState(false)
@@ -283,24 +299,10 @@ function FlashcardBlock({ cards }) {
     setIndex(next)
     setFlipped(false)
   }
-  const face = 'absolute inset-0 grid place-items-center rounded-2xl p-6 text-center text-xl font-bold [backface-visibility:hidden]'
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        onClick={() => setFlipped(!flipped)}
-        className="relative mx-auto block h-48 w-full max-w-md [perspective:1000px]"
-        aria-label="Lật thẻ"
-      >
-        <div
-          className="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d]"
-          style={{ transform: flipped ? 'rotateY(180deg)' : 'none' }}
-        >
-          <div className={`${face} bg-primary-600 text-white`}>{cards[index].front}</div>
-          <div className={`${face} bg-accent-100 text-accent-800 [transform:rotateY(180deg)]`}>{cards[index].back}</div>
-        </div>
-      </button>
+      <FlipCard front={cards[index].front} back={cards[index].back} flipped={flipped} onFlip={() => setFlipped(!flipped)} />
       <p className="text-center text-sm text-muted">Nhấp vào thẻ để lật · {index + 1}/{cards.length}</p>
       <div className="flex justify-center gap-2">
         <Button size="sm" variant="outline" disabled={index === 0} onClick={() => go(index - 1)}>← Trước</Button>

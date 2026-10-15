@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import CourseStatusBadge from '../../components/CourseStatusBadge'
-import { Button, Card, Input, Select } from '../../components/ui'
+import { Button, Card, Input, PageLoading, Select } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { useForm } from '../../lib/useForm'
 import { createCourse, getTeachingCourses, LEVEL_OPTIONS } from './api'
@@ -19,12 +19,15 @@ export default function InstructorCoursesPage() {
           <h1 className="text-3xl font-extrabold">Khóa học của tôi</h1>
           <p className="text-muted">Soạn nội dung, gửi duyệt và theo dõi trạng thái khóa học.</p>
         </div>
-        {!creating && <Button onClick={() => setCreating(true)}>+ Tạo khóa học</Button>}
+        <div className="flex gap-2">
+          <Link to="/instructor/stats"><Button variant="outline">Thống kê</Button></Link>
+          {!creating && <Button onClick={() => setCreating(true)}>+ Tạo khóa học</Button>}
+        </div>
       </div>
 
       {creating && <NewCourseForm onCancel={() => setCreating(false)} />}
 
-      {isLoading && <p className="text-muted">Đang tải…</p>}
+      {isLoading && <PageLoading title={false} />}
       {!isLoading && courses.length === 0 && <Card className="text-center text-muted">Bạn chưa có khóa học nào.</Card>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (

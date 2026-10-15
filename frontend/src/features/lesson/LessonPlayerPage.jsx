@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Drawer from '../../components/Drawer'
-import { Alert, Button, Card, Input, ProgressBar } from '../../components/ui'
+import { Alert, Button, Card, Input, PageLoading, ProgressBar } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { formatDuration } from '../../lib/format'
 import { useUser } from '../auth/api'
 import { enrollCourse, lessonPath } from '../courses/api'
+import { refreshRewardsSoon } from '../gamification/api'
 import { completeLesson, getLesson } from './api'
 import BlockView, { VideoBlock } from './Blocks'
 import { sectionNumbers } from './blockTypes'
@@ -20,7 +21,7 @@ export default function LessonPlayerPage() {
     retry: false,
   })
 
-  if (isLoading) return <p className="text-muted">Đang tải…</p>
+  if (isLoading) return <PageLoading />
   if (error) return <LockedLesson error={error} />
   return <Player key={`${slug}/${lessonSlug}`} data={data} queryKey={['lesson', slug, lessonSlug]} />
 }
@@ -54,8 +55,10 @@ function Player({ data, queryKey }) {
 
   const attempts = data.quiz_attempts ?? {}
   const remainingQuizzes = blocks.filter((block) => block.type === 'quiz' && !attempts[block.id]?.completed_once).length
-  const onAttempt = (blockId, attempt) =>
+  const onAttempt = (blockId, attempt) => {
     queryClient.setQueryData(queryKey, (old) => ({ ...old, quiz_attempts: { ...old.quiz_attempts, [blockId]: attempt } }))
+    refreshRewardsSoon(queryClient)
+  }
 
   const closeDrawer = useCallback(() => setDrawer(null), [])
 
@@ -260,8 +263,8 @@ function SectionRail({ sections, hasPlayground, onOpen }) {
         ))}
         <div className="mt-4 flex flex-col gap-2">{tools}</div>
       </div>
-      {/* Màn hình nhỏ: nút nổi góc phải */}
-      <div className="fixed bottom-4 right-4 z-20 flex gap-2 lg:hidden">{tools}</div>
+      {/* Màn hình nhỏ: nút nổi góc phải, nằm trên thanh tab */}
+      <div className="fixed bottom-20 right-4 z-20 flex gap-2 lg:hidden">{tools}</div>
     </>
   )
 }
@@ -306,7 +309,13 @@ function CompleteBar({ data, queryKey, remainingQuizzes }) {
     queryClient.invalidateQueries({ queryKey: ['my-courses'] })
   }
   const enroll = useMutation({ mutationFn: () => enrollCourse(data.course.id), onSuccess: refresh })
-  const complete = useMutation({ mutationFn: () => completeLesson(data.lesson.id), onSuccess: refresh })
+  const complete = useMutation({
+    mutationFn: () => completeLesson(data.lesson.id),
+    onSuccess: () => {
+      refresh()
+      refreshRewardsSoon(queryClient)
+    },
+  })
   const error = enroll.error ?? complete.error
 
   let content
@@ -321,7 +330,10 @@ function CompleteBar({ data, queryKey, remainingQuizzes }) {
     content = <p className="font-semibold text-muted">Bạn đang xem bài với tư cách người soạn khóa học.</p>
   } else if (!data.enrolled) {
     content = data.course.price > 0 ? (
-      <p className="font-semibold">Đây là bài học thử. Chức năng mua khóa học sẽ mở ở đợt sau.</p>
+      <>
+        <p className="font-semibold">Đây là bài học thử. Mua khóa học để học tất cả các bài.</p>
+        <Link to={`/courses/${data.course.slug}`}><Button>Mua khóa học</Button></Link>
+      </>
     ) : (
       <>
         <p className="font-semibold">Đăng ký khóa học (miễn phí) để lưu tiến độ.</p>

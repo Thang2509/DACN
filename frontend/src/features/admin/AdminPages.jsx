@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import CourseStatusBadge from '../../components/CourseStatusBadge'
-import { Alert, Avatar, Badge, Button, Card, Input, Select } from '../../components/ui'
+import { Alert, Avatar, Badge, Button, Card, Input, PageLoading, Select } from '../../components/ui'
 import { fieldError } from '../../lib/api'
 import { formatDate, formatPrice } from '../../lib/format'
 import { useUser } from '../auth/api'
@@ -10,15 +10,24 @@ import { approveCourse, getReviewCourses, getUsers, rejectCourse, setUserRole } 
 
 const ROLE_OPTIONS = { student: 'Học viên', instructor: 'Giảng viên', admin: 'Quản trị viên' }
 
-function AdminLayout({ title, children }) {
+const ADMIN_TABS = {
+  '/admin/stats': 'Thống kê',
+  '/admin/courses': 'Duyệt khóa học',
+  '/admin/users': 'Người dùng',
+  '/admin/rewards': 'Phần thưởng',
+  '/admin/paths': 'Lộ trình',
+}
+
+export function AdminLayout({ title, children }) {
   const tab = ({ isActive }) =>
     `rounded-xl px-4 py-2 font-semibold ${isActive ? 'bg-primary-600 text-white' : 'text-muted hover:bg-primary-50'}`
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-4 text-3xl font-extrabold">{title}</h1>
-        <NavLink to="/admin/courses" className={tab}>Duyệt khóa học</NavLink>
-        <NavLink to="/admin/users" className={tab}>Người dùng</NavLink>
+        {Object.entries(ADMIN_TABS).map(([to, label]) => (
+          <NavLink key={to} to={to} className={tab}>{label}</NavLink>
+        ))}
       </div>
       {children}
     </div>
@@ -120,7 +129,7 @@ export function CourseReviewPage() {
           </Button>
         ))}
       </div>
-      {isLoading && <p className="text-muted">Đang tải…</p>}
+      {isLoading && <PageLoading title={false} />}
       {data?.data.length === 0 && <Card className="text-center text-muted">Không có khóa học nào.</Card>}
       {data?.data.map((course) => <ReviewItem key={course.id} course={course} />)}
       <Pagination data={data} page={page} onPage={setPage} />

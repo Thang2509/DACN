@@ -46,6 +46,20 @@
     from { transform: translateY(-40px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+
+  /* Trang mới hiện ra: mờ dần vào và trượt nhẹ lên */
+  --animate-page: page-in 0.35s ease-out;
+  @keyframes page-in {
+    from { transform: translateY(8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Huy hiệu, thẻ trang trí bay lơ lửng ở trang chủ */
+  --animate-float: float 4s ease-in-out infinite;
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
 }
 
 /* Chế độ tối: đổi giá trị token, các trang dùng token sẽ tự đổi theo.
@@ -93,6 +107,12 @@
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
 }
 
+/* Viền focus rõ ràng khi dùng bàn phím (Tab); bấm chuột thì không hiện */
+:focus-visible {
+  outline: 3px solid var(--color-primary-400);
+  outline-offset: 2px;
+}
+
 body {
   @apply bg-surface text-ink font-sans antialiased;
 }
@@ -112,4 +132,76 @@ body {
   & table { @apply w-full border-collapse text-sm; }
   & th, & td { @apply border border-primary-100 px-3 py-2 text-left; }
   & th { @apply bg-primary-50; }
+}
+
+/* ---- Hiệu ứng chiều sâu (lib/useDepthEffects.js đặt các biến --tilt-*, --glare-*) ---- */
+@layer components {
+  /* Thẻ kính: nền hơi trong thấy màu nền phía sau, viền sáng mảnh, bóng đổ có chiều sâu.
+     Không dùng backdrop-filter (làm mờ phía sau) vì nhiều thẻ cùng lúc làm cuộn trang bị giật */
+  .glass {
+    background-color: color-mix(in oklab, var(--color-card) 88%, transparent);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.6);
+  }
+  [data-theme='dark'] .glass {
+    border-color: rgb(255 255 255 / 0.08);
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  /* Thẻ nghiêng theo vị trí chuột, kèm vệt sáng chạy theo con trỏ */
+  [data-tilt] {
+    position: relative;
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+  }
+  [data-tilt]:hover {
+    box-shadow: 0 28px 50px -28px rgb(43 33 112 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.6);
+  }
+  [data-tilt]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 0%), rgb(255 255 255 / 0.35), transparent 55%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  [data-tilt]:hover::after {
+    opacity: 1;
+  }
+
+  /* Nền phía sau mọi trang: các đốm màu mờ đứng yên (vẽ một lần, không tốn sức khi cuộn) */
+  .page-backdrop span {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    opacity: 0.45;
+  }
+  [data-theme='dark'] .page-backdrop span {
+    opacity: 0.35;
+  }
+}
+
+/* Khối nội dung trượt lên từ chiều sâu khi cuộn tới (trình duyệt chưa hỗ trợ animation-timeline thì hiện bình thường) */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal both ease-out;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+  }
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) translateY(70px) rotateX(16deg) scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tilt] {
+    transform: none;
+  }
 }
