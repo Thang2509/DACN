@@ -26,7 +26,7 @@ Plan đầy đủ: https://claude.ai/code/artifact/c094295d-140b-4d74-9f09-fb8f4
 | Phần | Dùng |
 | --- | --- |
 | Frontend | React + Vite (**JavaScript**, không TypeScript), React Router, TanStack Query, Tailwind CSS, CodeMirror, sql.js |
-| 3D | Three.js qua React Three Fiber, drei, @react-three/postprocessing; mô hình glTF **low-poly** |
+| 3D | Three.js qua React Three Fiber, drei, @react-three/postprocessing; thú cưng, nội thất **dựng hoàn toàn bằng code** (không dùng file mô hình) |
 | Backend | Laravel (PHP ≥ 8.2), Sanctum (cookie SPA); Queue và Cache dùng driver `database` |
 | CSDL | MySQL chạy trên **XAMPP** |
 | Kiểm thử | PHPUnit, Vitest |
@@ -50,7 +50,6 @@ eduquest/
 │   ├── routes/api.php
 │   └── tests/
 ├── frontend/
-│   ├── public/models/         file .glb thú cưng
 │   └── src/
 │       ├── main.jsx
 │       ├── App.jsx            router + layout
@@ -69,7 +68,7 @@ eduquest/
 - Cấu trúc: Lộ trình → Khóa học → Chương → Bài học → Khối nội dung.
 - Loại khối: văn bản Markdown, video, quiz (có giải thích), animation tương tác (component React bằng SVG + CSS, có tham số), code sandbox (JavaScript trong iframe cách ly, SQL bằng sql.js), flashcard tổng kết.
 - Bài lưu trong bảng `lesson_blocks`: loại khối + nội dung JSON + thứ tự.
-- Nhập nội dung 2 cách: giao diện kéo-thả khối cho giảng viên, và `php artisan content:import content/<khoa-hoc>` từ file Markdown. Định dạng file Markdown sẽ chốt khi làm tính năng import.
+- Nhập nội dung 2 cách: giao diện kéo-thả khối cho giảng viên, và `php artisan content:import content/<khoa-hoc>` từ file Markdown (định dạng: `docs/import-markdown.md`, ví dụ: `content/mang-javascript`).
 - Flashcard ôn tập lặp lại ngắt quãng (SM-2). Không làm tính năng ghi chú bài học (đã bỏ).
 
 ## Trò chơi hóa
@@ -80,10 +79,14 @@ eduquest/
 
 ## Thú cưng 3D (trọng tâm, cần đẹp nhất)
 
-- Phong cách low-poly, mô hình glTF có khung xương (nguồn CC0 như Quaternius, Kenney; chỉnh trong Blender), nén Draco.
-- Hoạt ảnh: đứng, đi, chạy, nhảy, ăn, ngủ, vui, buồn; trộn hoạt ảnh mượt.
-- Vòng đời: trứng → nở → con non → trưởng thành → tiến hóa. Chỉ số no, vui, năng lượng tăng khi học.
-- Bộ sưu tập 6–8 loài (bắt đầu với 3), trang bị gắn vào xương, phòng thú cưng 3D, 2 minigame (tự xử lý va chạm).
+- Thú dựng hoàn toàn bằng code, **tỉ lệ cơ thể như thật** (thú nhỏ phóng to khi hiển thị cho dễ nhìn), không dùng file .glb:
+  - `anatomy.js`: đặc điểm theo nhóm loài (kiểu mặt, răng cửa thú gặm nhấm, móng, ria, kiểu di chuyển) + tham số từng giống → bộ xương ~30 xương + các khối thịt SDF hòa vào nhau; `mesher.js` dựng lưới liền một khối (surface nets); chạy trong Web Worker (`anatomy.worker.js`).
+  - `fur.js`: lông nhiều lớp (32 lớp, sợi thon, chải theo hướng, rủ theo trọng lực, lay theo quán tính) và gai cứng có vằn cho nhím; màu lông theo giống (urajiro Shiba, vằn mèo mướp, má trắng hamster…).
+  - `PetBody.jsx`: SkinnedMesh + mắt có mống mắt, mí chớp, mũi ướt, miệng, lưỡi, răng nanh hoặc răng cửa, móng, ria; đầu và mắt nhìn theo người chơi (hoặc theo chuột ở trang chủ); IK đặt chân xuống sàn.
+- Hoạt ảnh tính bằng code (`petMotion.js`): đứng, đi, chạy, nhảy, ăn, ngủ, vui, buồn; kiểu di chuyển theo loài: đi 4 nhịp / phi nước đại (chó, mèo, capybara), thỏ nhảy, hamster và nhím chạy lon ton; đổi trạng thái trộn chéo mượt, thân uốn khi rẽ; cử chỉ lúc rảnh (ngồi, ngáp, gãi tai, đánh hơi, rũ lông, liếm lông, đứng ngó); đuôi, tai lắc theo lò xo.
+- Vòng đời: trứng (nở ngay khi nhận) → mới nở → con non → trưởng thành → tiến hóa. Chỉ số no, vui, năng lượng tăng khi học.
+- 8 loài: khởi đầu Shiba, Thỏ, Mèo mướp; mua thêm Corgi, Mèo Ba Tư, Capybara, Hamster, Nhím. Trang bị gắn vào điểm neo đầu / cổ / lưng.
+- Phòng 3D dựng bằng code: thú tự đi lại tránh đồ, ăn ở bát, ngủ trên ổ, nhặt bóng, được vuốt ve; ánh sáng ngày/đêm theo giờ thật; hiệu ứng cảm xúc. 2 minigame (tự xử lý va chạm) trong cảnh thiên nhiên hoạt hình dựng bằng code (`Nature.jsx`).
 
 ## Tiến độ (theo đề cương)
 
